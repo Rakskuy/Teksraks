@@ -59,6 +59,7 @@ export default function MobileBottomBar({
   const isRecording = status === 'recording'
   const isPaused = status === 'paused'
   const isIdle = status === 'idle'
+  const isStarting = status === 'starting'
 
   // Scroll active speaker chip into view when activeSpeakerId changes
   const activeChipRef = useRef<HTMLButtonElement>(null)
@@ -73,7 +74,7 @@ export default function MobileBottomBar({
   }, [activeSpeakerId])
 
   const handleCenterAction = () => {
-    if (!isSupported) return
+    if (!isSupported || isStarting) return
     if (isIdle) {
       triggerHaptic('start')
       onStart()
@@ -119,6 +120,11 @@ export default function MobileBottomBar({
             <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-bold">
               <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-ping inline-block" />
               <span>Merekam</span>
+            </span>
+          ) : isStarting ? (
+            <span className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
+              <span>Menyiapkan…</span>
             </span>
           ) : isPaused ? (
             <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">

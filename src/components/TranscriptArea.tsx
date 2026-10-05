@@ -18,13 +18,14 @@ import {
   Radio,
   RotateCcw,
 } from 'lucide-react'
-import type { Segment, Speaker } from '../types/session'
+import type { LiveSegment, Segment, Speaker } from '../types/session'
 import type { RecordingStatus } from '../types/speech.d'
 import SegmentItem from './SegmentItem'
 import FindReplaceBar from './FindReplaceBar'
 
 interface TranscriptAreaProps {
   segments: Segment[]
+  liveSegment?: LiveSegment | null
   speakers: Speaker[]
   activeSpeakerId: string
   interimText: string
@@ -53,6 +54,7 @@ interface TranscriptAreaProps {
 
 export default function TranscriptArea({
   segments,
+  liveSegment,
   speakers,
   activeSpeakerId,
   interimText,
@@ -86,14 +88,15 @@ export default function TranscriptArea({
 
   const isRecording = status === 'recording'
   const isPaused = status === 'paused'
-  const isEmpty = segments.length === 0 && !interimText.trim()
+  const hasLive = Boolean(liveSegment && liveSegment.rawText.trim())
+  const isEmpty = segments.length === 0 && !hasLive && !interimText.trim()
 
   // Auto-scroll ke bagian bawah saat rekaman aktif dan ada teks baru
   useEffect(() => {
     if (isRecording && bottomAnchorRef.current) {
       bottomAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
     }
-  }, [segments.length, interimText, isRecording])
+  }, [segments.length, liveSegment?.rawText, interimText, isRecording])
 
   const handleConfirmClear = () => {
     onClearAll()
@@ -290,8 +293,59 @@ export default function TranscriptArea({
           )
         })}
 
-        {/* ── Preview Teks Sementara (Interim) yang Sedang Didengarkan ── */}
-        {interimText && (
+        {/* ── Segmen Live Sementara (Diperbarui di tempat sampai dicommit) ── */}
+        {hasLive && (
+          (() => {
+            const liveSpeaker = speakers.find(s => s.id === liveSegment!.speakerId) || activeSpeaker
+            return (
+              <div
+                id="live-segment-row"
+                className="flex gap-2.5 sm:gap-3 px-3 sm:px-5 py-3.5 bg-amber-50/40 dark:bg-amber-950/20 border-l-4 border-amber-500 animate-fade-in"
+                aria-live="polite"
+              >
+                {/* Indikator warna pembicara */}
+                <div
+                  className="flex-shrink-0 w-1.5 sm:w-1 rounded-full self-stretch"
+                  style={{ backgroundColor: liveSpeaker.color }}
+                />
+
+                <div className="flex-1 min-w-0">
+                  {/* Header: Nama Pembicara + Timestamp Mulai + Badge Live */}
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span
+                      className="text-xs font-bold px-2 py-0.5 rounded-md"
+                      style={{
+                        backgroundColor: `${liveSpeaker.color}20`,
+                        color: liveSpeaker.color,
+                      }}
+                    >
+                      {liveSpeaker.name}
+                    </span>
+
+                    {showTimestamps && (
+                      <span className="text-[11px] font-mono text-slate-400 dark:text-slate-500">
+                        [{liveSegment!.startTime}]
+                      </span>
+                    )}
+
+                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping inline-block" />
+                      Live
+                    </span>
+                  </div>
+
+                  {/* Teks Live diperbarui di tempat (tampil apa adanya sesuai syarat 7) */}
+                  <p className="text-base sm:text-sm text-slate-800 dark:text-slate-100 font-medium leading-[1.6]">
+                    {liveSegment!.rawText}
+                  </p>
+                </div>
+              </div>
+            )
+          })()
+        )}
+
+        {/* ── Preview Teks Sementara (Interim) Cadangan jika liveSegment belum ada ── */}
+        {!hasLive && interimText && (
           <div
             className="flex gap-2.5 sm:gap-3 px-3 sm:px-5 py-3 bg-primary-50/40 dark:bg-primary-950/20 border-t border-dashed border-primary-200 dark:border-primary-800 animate-fade-in"
             aria-live="polite"

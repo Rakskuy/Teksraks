@@ -37,6 +37,15 @@ export interface Segment {
   relativeMs?: number
 }
 
+/** Segmen yang sedang aktif diucapkan pembicara sebelum dicommit */
+export interface LiveSegment {
+  id: string
+  speakerId: string
+  startTime: string
+  rawText: string
+  relativeMs: number
+}
+
 export const SESSION_VERSION = 1
 
 export interface SessionData {

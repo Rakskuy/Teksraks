@@ -22,6 +22,7 @@ import {
   Wand2,
   ChevronDown,
   ChevronUp,
+  Loader2,
 } from 'lucide-react'
 import type { RecordingStatus, SupportedLang } from '../types/speech.d'
 import type { DialectMode, DialectIntensity } from '../dialect'
@@ -58,6 +59,7 @@ export default function ControlPanel({
   isSupported,
   lang,
   audioLevel,
+  privacyAgreed = false,
   dialectMode = 'standard',
   dialectIntensity = 'medium',
   onStart,
@@ -74,6 +76,7 @@ export default function ControlPanel({
   const [showRuleInfo, setShowRuleInfo] = useState(false)
 
   const isIdle = status === 'idle'
+  const isStarting = status === 'starting'
   const isRecording = status === 'recording'
   const isPaused = status === 'paused'
   const isStopping = status === 'stopping'
@@ -101,7 +104,7 @@ export default function ControlPanel({
               id="lang-select"
               value={lang}
               onChange={e => onLangChange(e.target.value as SupportedLang)}
-              disabled={isStopping}
+              disabled={isStopping || isStarting}
               aria-label="Pilih bahasa transkrip"
               className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary-500 hover:border-slate-300 dark:hover:border-slate-600 transition-colors cursor-pointer disabled:opacity-40 appearance-none pr-7 bg-no-repeat shadow-2xs"
               style={{
@@ -120,19 +123,39 @@ export default function ControlPanel({
 
         {/* ── 2. Baris Utama Aksi Rekam (Satu Tombol Primer) ── */}
         <div className="flex items-center justify-center gap-3 py-1 flex-wrap">
-          {/* Status IDLE: Tombol REKAM primer + Tombol Unggah Audio sekunder */}
-          {isIdle && (
+          {/* Status IDLE / STARTING: Tombol REKAM primer + Tombol Unggah Audio sekunder */}
+          {(isIdle || isStarting) && (
             <>
               <button
                 id="btn-start-recording"
                 type="button"
                 onClick={onStart}
-                disabled={!isSupported || isStopping}
-                aria-label="Mulai merekam suara"
-                className="flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-sm bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white shadow-sm hover:shadow active:scale-95 transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={!isSupported || isStopping || isStarting}
+                aria-label={isStarting ? 'Menghubungkan mikrofon...' : 'Mulai merekam suara'}
+                title={
+                  !privacyAgreed
+                    ? 'Centang persetujuan privasi di atas untuk mulai merekam'
+                    : isStarting
+                    ? 'Menghubungkan mikrofon...'
+                    : 'Mulai merekam suara'
+                }
+                className={`relative z-10 flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl font-bold text-sm shadow-sm hover:shadow active:scale-95 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed ${
+                  isStarting
+                    ? 'bg-blue-600 text-white dark:bg-blue-500'
+                    : 'bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white cursor-pointer'
+                }`}
               >
-                <Mic className="w-5 h-5 text-rose-500 dark:text-rose-600" strokeWidth={2.4} />
-                <span>Rekam</span>
+                {isStarting ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin text-white dark:text-slate-900" />
+                    <span>Menghubungkan…</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-5 h-5 text-rose-500 dark:text-rose-600" strokeWidth={2.4} />
+                    <span>Rekam</span>
+                  </>
+                )}
               </button>
 
               {onOpenWhisper && (
@@ -140,14 +163,20 @@ export default function ControlPanel({
                   id="btn-open-whisper"
                   type="button"
                   onClick={onOpenWhisper}
-                  disabled={isStopping}
+                  disabled={isStopping || isStarting}
                   aria-label="Unggah berkas audio untuk ditranskripsi"
                   title="Unggah berkas audio via mesin Whisper AI"
-                  className="flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 transition-all"
+                  className="flex items-center gap-2 px-5 py-3.5 rounded-2xl font-semibold text-xs sm:text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 shadow-2xs active:scale-95 transition-all cursor-pointer"
                 >
                   <FileAudio className="w-4 h-4 text-slate-500" />
                   <span>Unggah Audio</span>
                 </button>
+              )}
+
+              {!privacyAgreed && (
+                <p className="w-full text-center text-xs text-amber-600 dark:text-amber-400 font-medium animate-fade-in mt-1">
+                  ⚠️ Centang persetujuan privasi di atas untuk mulai merekam
+                </p>
               )}
             </>
           )}

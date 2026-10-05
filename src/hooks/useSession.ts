@@ -16,6 +16,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import type {
   Speaker,
   Segment,
+  LiveSegment,
   SessionData,
   SessionStats,
   SpeakerStats,
@@ -23,6 +24,7 @@ import type {
 import { SPEAKER_COLORS, SESSION_VERSION } from '../types/session'
 import type { DialectChange, DialectIntensity } from '../dialect'
 import { applyBekasi } from '../dialect'
+import { normalizeText, mergeSpeechTranscript } from '../utils/transcriptDedupe'
 import {
   SAMPLE_SPEAKERS,
   SAMPLE_TITLE,
@@ -147,8 +149,12 @@ export function useSession() {
   const [activeSpeakerId, setActiveSpeakerIdState] = useState<string>(DEFAULT_SPEAKERS[0].id)
   // Ref untuk closure-safe reads (tidak stale dalam callbacks)
   const activeSpeakerIdRef = useRef<string>(DEFAULT_SPEAKERS[0].id)
+  const commitLiveSegmentRef = useRef<(mode?: 'standard' | 'bekasi', intensity?: DialectIntensity) => void>(() => {})
 
   const setActiveSpeakerId = useCallback((id: string) => {
+    if (liveSegmentRef.current && liveSegmentRef.current.rawText.trim()) {
+      commitLiveSegmentRef.current()
+    }
     setActiveSpeakerIdState(id)
     activeSpeakerIdRef.current = id
   }, [])
@@ -156,6 +162,15 @@ export function useSession() {
   // ── Segmen ────────────────────────────────────────────────────────────────
   const [segments, setSegments]             = useState<Segment[]>([])
   const [showTimestamps, setShowTimestamps]  = useState(true)
+
+  // ── Live Segment (Segmen yang sedang diucapkan sebelum dicommit) ───────────
+  const [liveSegment, setLiveSegment]       = useState<LiveSegment | null>(null)
+  const liveSegmentRef                      = useRef<LiveSegment | null>(null)
+
+  const segmentsRef = useRef<Segment[]>(segments)
+  useEffect(() => {
+    segmentsRef.current = segments
+  }, [segments])
 
   // ── Find & Replace ────────────────────────────────────────────────────────
   const [findQuery, setFindQuery]       = useState('')
@@ -243,6 +258,171 @@ export function useSession() {
     return Date.now() - recordingStartMsRef.current - totalPausedMsRef.current - paused
   }, [])
 
+  const dialectConfigRef = useRef<{ mode: 'standard' | 'bekasi'; intensity: DialectIntensity }>({
+    mode: 'standard',
+    intensity: 'medium',
+  })
+
+  const setDialectConfig = useCallback(
+    (mode: 'standard' | 'bekasi', intensity: DialectIntensity = 'medium') => {
+      dialectConfigRef.current = { mode, intensity }
+    },
+    [],
+  )
+
+  const commitLiveSegment = useCallback(
+    (
+      dialectMode?: 'standard' | 'bekasi',
+      intensity?: DialectIntensity,
+    ) => {
+      const live = liveSegmentRef.current
+      if (!live || !live.rawText.trim()) {
+        setLiveSegment(null)
+        liveSegmentRef.current = null
+        return
+      }
+
+      const activeMode = dialectMode ?? dialectConfigRef.current.mode
+      const activeIntensity = intensity ?? dialectConfigRef.current.intensity
+
+      const rawText = live.rawText.trim()
+      let displayText = rawText
+      let dialectChanges: DialectChange[] = []
+
+      if (activeMode === 'bekasi') {
+        const res = applyBekasi(rawText, { intensity: activeIntensity })
+        displayText = res.displayText
+        dialectChanges = res.changes
+      }
+
+      const segment: Segment = {
+        id: live.id,
+        speakerId: live.speakerId,
+        startTime: live.startTime,
+        rawText,
+        displayText,
+        dialectChanges,
+        edited: false,
+        text: displayText,
+        timestamp: live.startTime,
+        relativeMs: live.relativeMs,
+      }
+
+      segmentsRef.current = [...segmentsRef.current, segment]
+      setSegments(prev => [...prev, segment])
+      setLiveSegment(null)
+      liveSegmentRef.current = null
+    },
+    [],
+  )
+  commitLiveSegmentRef.current = commitLiveSegment
+
+  const updateLiveSegment = useCallback(
+    (incomingText: string) => {
+      const raw = incomingText.trim()
+      if (!raw) return
+
+      // 1. Jika ada liveSegment aktif, lakukan pembaruan di tempat (in-place replacement / cumulative merge)
+      if (liveSegmentRef.current) {
+        const prev = liveSegmentRef.current
+        const merged = mergeSpeechTranscript(prev.rawText, raw)
+        const updated: LiveSegment = {
+          ...prev,
+          rawText: merged,
+        }
+        liveSegmentRef.current = updated
+        setLiveSegment(updated)
+        return
+      }
+
+      // 2. Jika liveSegment belum ada (misal segmen sebelumnya baru saja dicommit),
+      // periksa apakah teks baru ini adalah kelanjutan kumulatif dari segmen terakhir pembicara yang sama.
+      // (Khas Chrome Android yang mengirim hasil kumulatif berulang dan bisa terlambat terpotong commit).
+      const lastIdx = segmentsRef.current.length - 1
+      const lastSegment = lastIdx >= 0 ? segmentsRef.current[lastIdx] : null
+
+      if (
+        lastSegment &&
+        lastSegment.speakerId === activeSpeakerIdRef.current &&
+        !lastSegment.edited
+      ) {
+        const normLast = normalizeText(lastSegment.rawText)
+        const normRaw = normalizeText(raw)
+
+        // Skenario A: Teks baru mencakup seluruh segmen sebelumnya dan bertambah kata baru
+        // Contoh: lastSegment = "Oke jadi kali", raw = "Oke jadi kali ini saya mau"
+        if (normRaw.startsWith(normLast)) {
+          // Buka kembali segmen terakhir menjadi liveSegment terpanjang, cabut dari committed segments agar TIDAK MENUMPUK!
+          segmentsRef.current = segmentsRef.current.slice(0, lastIdx)
+          setSegments(prev => prev.slice(0, lastIdx))
+
+          const reopened: LiveSegment = {
+            id: lastSegment.id,
+            speakerId: lastSegment.speakerId,
+            startTime: lastSegment.startTime,
+            rawText: raw,
+            relativeMs: lastSegment.relativeMs ?? 0,
+          }
+          liveSegmentRef.current = reopened
+          setLiveSegment(reopened)
+          return
+        }
+
+        // Skenario B: Teks baru adalah awalan yang lebih pendek dari segmen yang sudah dicommit (jitter engine)
+        if (normLast.startsWith(normRaw)) {
+          return
+        }
+
+        // Skenario C: Overlap kata di batas akhir segmen terakhir dan kepala teks baru
+        const wordsLast = lastSegment.rawText.split(/\s+/)
+        const wordsRaw = raw.split(/\s+/)
+        const maxCheck = Math.min(wordsLast.length, wordsRaw.length, 6)
+        let overlapCount = 0
+
+        for (let len = maxCheck; len >= 1; len--) {
+          const tail = wordsLast.slice(-len).map(w => normalizeText(w)).join(' ')
+          const head = wordsRaw.slice(0, len).map(w => normalizeText(w)).join(' ')
+          if (tail && tail === head) {
+            overlapCount = len
+            break
+          }
+        }
+
+        if (overlapCount > 0) {
+          const uniqueSuffix = wordsRaw.slice(overlapCount).join(' ')
+          if (!uniqueSuffix) return
+
+          segmentsRef.current = segmentsRef.current.slice(0, lastIdx)
+          setSegments(prev => prev.slice(0, lastIdx))
+
+          const reopened: LiveSegment = {
+            id: lastSegment.id,
+            speakerId: lastSegment.speakerId,
+            startTime: lastSegment.startTime,
+            rawText: `${lastSegment.rawText} ${uniqueSuffix}`,
+            relativeMs: lastSegment.relativeMs ?? 0,
+          }
+          liveSegmentRef.current = reopened
+          setLiveSegment(reopened)
+          return
+        }
+      }
+
+      // 3. Jika bukan kelanjutan dari segmen sebelumnya, buat liveSegment baru
+      const relativeMs = getRelativeMs()
+      const newLive: LiveSegment = {
+        id: makeId(),
+        speakerId: activeSpeakerIdRef.current,
+        startTime: formatTimestamp(relativeMs),
+        rawText: raw,
+        relativeMs,
+      }
+      liveSegmentRef.current = newLive
+      setLiveSegment(newLive)
+    },
+    [getRelativeMs],
+  )
+
   const onRecordingStart = useCallback(() => {
     recordingStartMsRef.current = Date.now()
     totalPausedMsRef.current = 0
@@ -251,7 +431,10 @@ export function useSession() {
 
   const onRecordingPause = useCallback(() => {
     pausedAtRef.current = Date.now()
-  }, [])
+    if (liveSegmentRef.current && liveSegmentRef.current.rawText.trim()) {
+      commitLiveSegment()
+    }
+  }, [commitLiveSegment])
 
   const onRecordingResume = useCallback(() => {
     if (pausedAtRef.current !== null) {
@@ -293,6 +476,7 @@ export function useSession() {
         timestamp: startTime,
         relativeMs,
       }
+      segmentsRef.current = [...segmentsRef.current, segment]
       setSegments(prev => [...prev, segment])
     },
     [getRelativeMs],
@@ -301,6 +485,7 @@ export function useSession() {
   /** Append batch segmen sekaligus (misal dari transkripsi Whisper) */
   const appendBatchSegments = useCallback((newSegments: Segment[]) => {
     if (!newSegments || newSegments.length === 0) return
+    segmentsRef.current = [...segmentsRef.current, ...newSegments]
     setSegments(prev => [...prev, ...newSegments])
   }, [])
 
@@ -308,8 +493,8 @@ export function useSession() {
   // CRUD Segmen
   // ─────────────────────────────────────────────────────────────────────────
   const editSegment = useCallback((id: string, newText: string) => {
-    setSegments(prev =>
-      prev.map(s =>
+    setSegments(prev => {
+      const updated = prev.map(s =>
         s.id === id
           ? {
               ...s,
@@ -318,12 +503,18 @@ export function useSession() {
               edited: true,
             }
           : s,
-      ),
-    )
+      )
+      segmentsRef.current = updated
+      return updated
+    })
   }, [])
 
   const deleteSegment = useCallback((id: string) => {
-    setSegments(prev => prev.filter(s => s.id !== id))
+    setSegments(prev => {
+      const updated = prev.filter(s => s.id !== id)
+      segmentsRef.current = updated
+      return updated
+    })
   }, [])
 
   /** Kembalikan segmen tunggal ke teks asli mesin (rawText) */
@@ -534,6 +725,8 @@ export function useSession() {
     setNotes('')
     setSpeakers(DEFAULT_SPEAKERS)
     setSegments([])
+    setLiveSegment(null)
+    liveSegmentRef.current = null
     setActiveSpeakerId(DEFAULT_SPEAKERS[0].id)
     setShowRestoreDialog(false)
     setPendingRestore(null)
@@ -547,6 +740,8 @@ export function useSession() {
 
   const clearAllSegments = useCallback(() => {
     setSegments([])
+    setLiveSegment(null)
+    liveSegmentRef.current = null
   }, [])
 
   const loadSampleData = useCallback(() => {
@@ -628,6 +823,10 @@ export function useSession() {
     addSpeaker, renameSpeaker, deleteSpeaker,
     // Segmen
     segments, showTimestamps, setShowTimestamps,
+    liveSegment,
+    updateLiveSegment,
+    commitLiveSegment,
+    setDialectConfig,
     appendSegment,
     appendBatchSegments,
     editSegment, deleteSegment, mergeWithPrevious, changeSegmentSpeaker,

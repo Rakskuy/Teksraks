@@ -35,7 +35,8 @@ import WhisperModal from './components/WhisperModal'
 import SettingsModal from './components/SettingsModal'
 import MobileBottomBar from './components/MobileBottomBar'
 import MobileSettingsSheet from './components/MobileSettingsSheet'
-import { applyBekasi, type DialectMode, type DialectIntensity } from './dialect'
+import type { DialectMode, DialectIntensity } from './dialect'
+import type { SpeechError } from './types/speech.d'
 
 const PRIVACY_KEY = 'psikologi-stt-privacy-agreed'
 const DIALECT_MODE_KEY = 'psikologi-stt-dialect-mode'
@@ -62,9 +63,13 @@ export default function App() {
       return false
     }
   })
+  const [privacyError, setPrivacyError] = useState<SpeechError | null>(null)
 
   const handleTogglePrivacy = useCallback((agreed: boolean) => {
     setPrivacyAgreed(agreed)
+    if (agreed) {
+      setPrivacyError(null)
+    }
     try {
       localStorage.setItem(PRIVACY_KEY, String(agreed))
     } catch { /* ignore */ }
@@ -121,6 +126,11 @@ export default function App() {
     return 'medium'
   })
 
+  // Sinkronisasi preferensi dialek ke session
+  useEffect(() => {
+    session.setDialectConfig(dialectMode, bekasiIntensity)
+  }, [dialectMode, bekasiIntensity, session])
+
   const handleDialectModeChange = useCallback(
     (newMode: DialectMode) => {
       setDialectMode(newMode)
@@ -146,26 +156,6 @@ export default function App() {
     [dialectMode, session],
   )
 
-  const handleFinalChunk = useCallback(
-    (rawChunkText: string) => {
-      if (dialectMode === 'bekasi') {
-        const res = applyBekasi(rawChunkText, { intensity: bekasiIntensity })
-        session.appendSegment({
-          rawText: rawChunkText,
-          displayText: res.displayText,
-          dialectChanges: res.changes,
-        })
-      } else {
-        session.appendSegment({
-          rawText: rawChunkText,
-          displayText: rawChunkText,
-          dialectChanges: [],
-        })
-      }
-    },
-    [dialectMode, bekasiIntensity, session],
-  )
-
   const handleApplyDialectToAll = useCallback(() => {
     session.reapplyDialectToUnedited(dialectMode, bekasiIntensity)
   }, [session, dialectMode, bekasiIntensity])
@@ -177,23 +167,37 @@ export default function App() {
     isSupported,
     isBrowserWarning,
     isIOSSafari,
-    error,
+    error: speechError,
     lang,
     audioLevel,
     startRecording: rawStartRecording,
     pauseRecording: rawPauseRecording,
     resumeRecording: rawResumeRecording,
-    stopRecording,
-    clearError,
+    stopRecording: rawStopRecording,
+    clearError: clearSpeechError,
     setLang,
   } = useSpeechRecognition({
-    onFinalChunk: handleFinalChunk,
+    onLiveUpdate: session.updateLiveSegment,
+    onCommit: () => session.commitLiveSegment(dialectMode, bekasiIntensity),
     dialectMode,
   })
+
+  // Penggabungan error speech recognition dan error validasi privasi
+  const activeError = speechError || privacyError
+  const handleClearError = useCallback(() => {
+    clearSpeechError()
+    setPrivacyError(null)
+  }, [clearSpeechError])
 
   // Sinkronisasi timer sesi dengan kontrol perekaman suara + cek privasi
   const handleStartRecording = useCallback(() => {
     if (!privacyAgreed) {
+      setPrivacyError({
+        code: 'privacy-required',
+        title: 'Persetujuan Privasi Diperlukan',
+        message: 'Silakan centang kotak persetujuan privasi di atas sebelum mulai merekam dialog.',
+        tip: 'Centang kotak "Saya memahami dan menyetujui..." pada panel hijau di atas, lalu tekan Rekam kembali.',
+      })
       // Fokus dan ingatkan pengguna untuk menyetujui pernyataan privasi
       const privacyEl = document.getElementById('checkbox-privacy-agree')
       if (privacyEl) {
@@ -202,6 +206,7 @@ export default function App() {
       }
       return
     }
+    setPrivacyError(null)
     session.onRecordingStart()
     rawStartRecording()
   }, [privacyAgreed, session, rawStartRecording])
@@ -216,10 +221,16 @@ export default function App() {
     rawResumeRecording()
   }, [session, rawResumeRecording])
 
+  const handleStopRecording = useCallback(() => {
+    session.commitLiveSegment(dialectMode, bekasiIntensity)
+    rawStopRecording()
+  }, [session, dialectMode, bekasiIntensity, rawStopRecording])
+
   // Bersihkan semua data (Wipe Data)
   const handleClearAllData = useCallback(() => {
     session.startNewSession()
     setPrivacyAgreed(false)
+    setPrivacyError(null)
     setHasUnsavedChanges(false)
     try {
       localStorage.removeItem(PRIVACY_KEY)
@@ -303,7 +314,7 @@ export default function App() {
         )}
 
         {/* Banner Notifikasi Error Web Speech API */}
-        {error && <ErrorBanner error={error} onDismiss={clearError} />}
+        {activeError && <ErrorBanner error={activeError} onDismiss={handleClearError} />}
 
         {/* 1. Persetujuan Privasi (Ciut otomatis saat aktif) */}
         <PrivacyBanner
@@ -346,7 +357,7 @@ export default function App() {
             onStart={handleStartRecording}
             onPause={handlePauseRecording}
             onResume={handleResumeRecording}
-            onStop={stopRecording}
+            onStop={handleStopRecording}
             onLangChange={setLang}
             onDialectModeChange={handleDialectModeChange}
             onDialectIntensityChange={handleDialectIntensityChange}
@@ -359,6 +370,7 @@ export default function App() {
         {/* 5. Transkrip Dialog (Area Terbesar & Paling Sentral) */}
         <TranscriptArea
           segments={session.segments}
+          liveSegment={session.liveSegment}
           speakers={session.speakers}
           activeSpeakerId={session.activeSpeakerId}
           interimText={interimText}
@@ -428,7 +440,7 @@ export default function App() {
         onStart={handleStartRecording}
         onPause={handlePauseRecording}
         onResume={handleResumeRecording}
-        onStop={stopRecording}
+        onStop={handleStopRecording}
         onOpenMenu={() => setIsMobileMenuOpen(true)}
         onOpenWhisper={() => setIsWhisperOpen(true)}
       />
