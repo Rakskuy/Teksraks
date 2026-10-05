@@ -176,6 +176,7 @@ export default function App() {
     status,
     isSupported,
     isBrowserWarning,
+    isIOSSafari,
     error,
     lang,
     audioLevel,
@@ -187,6 +188,7 @@ export default function App() {
     setLang,
   } = useSpeechRecognition({
     onFinalChunk: handleFinalChunk,
+    dialectMode,
   })
 
   // Sinkronisasi timer sesi dengan kontrol perekaman suara + cek privasi
@@ -296,6 +298,9 @@ export default function App() {
       >
         {/* Banner Peringatan Browser */}
         {isBrowserWarning && <BrowserBanner />}
+        {!isBrowserWarning && isIOSSafari && (
+          <BrowserBanner isIOS onOpenWhisper={() => setIsWhisperOpen(true)} />
+        )}
 
         {/* Banner Notifikasi Error Web Speech API */}
         {error && <ErrorBanner error={error} onDismiss={clearError} />}

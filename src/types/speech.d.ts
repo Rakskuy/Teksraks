@@ -27,6 +27,8 @@ export type SupportedLang = 'id-ID' | 'en-US' | 'en-GB'
 export interface UseSpeechRecognitionOptions {
   /** Dipanggil setiap kali ada final chunk dari speech engine */
   onFinalChunk?: (text: string) => void
+  /** Mode dialek: 'standard' (apa adanya) atau 'bekasi' (evaluasi alternatif) */
+  dialectMode?: 'standard' | 'bekasi'
 }
 
 export interface SpeechRecognitionHookResult {
@@ -34,6 +36,7 @@ export interface SpeechRecognitionHookResult {
   status: RecordingStatus
   isSupported: boolean
   isBrowserWarning: boolean
+  isIOSSafari: boolean
   error: SpeechError | null
   lang: SupportedLang
   audioLevel: number

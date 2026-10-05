@@ -4,14 +4,13 @@
  * Custom hook untuk Web Speech API:
  * - Bahasa id-ID / en-US / en-GB
  * - continuous=true, interimResults=true
- * - Auto-restart saat Chrome berhenti karena hening
- * - Setiap final chunk dikirim via onFinalChunk callback
- * - Pause/Resume aman tanpa race condition
- * - Proteksi anti-duplikasi teks via lastFinalProcessedIndex
- * - Penanganan semua error (pesan Indonesia)
- * - Pembersihan memori (AudioContext & media stream) tanpa memory leak
- * - Deteksi browser tidak didukung
- * - Cleanup saat unmount
+ * - Auto-restart saat Chrome hening tanpa race condition / instance ganda
+ * - Mode Logat Standar melewati teks apa adanya (as-is)
+ * - Mode Logat Bekasi mengevaluasi multi-alternatif (maxAlternatives=5) dengan fallback aman
+ * - Deteksi kesunyian >8 detik dengan pesan ramah Indonesia
+ * - Perlindungan mikrofon: SpeechRecognition selalu start dulu, getUserMedia sekunder opsional aman, nonaktif di mobile
+ * - Deteksi lingkungan mobile, iOS/Safari
+ * - Pembersihan memori lengkap & anti memory leak
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react'
@@ -58,6 +57,12 @@ interface ISpeechRecognition extends EventTarget {
   interimResults: boolean
   maxAlternatives: number
   onstart: (() => void) | null
+  onaudiostart?: (() => void) | null
+  onsoundstart?: (() => void) | null
+  onspeechstart?: (() => void) | null
+  onspeechend?: (() => void) | null
+  onsoundend?: (() => void) | null
+  onaudioend?: (() => void) | null
   onresult: ((event: ISpeechRecognitionEvent) => void) | null
   onerror: ((event: ISpeechRecognitionErrorEvent) => void) | null
   onend: (() => void) | null
@@ -127,12 +132,33 @@ function buildError(code: string): SpeechError {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Deteksi dukungan browser
+// Deteksi dukungan browser & perangkat mobile
 // ─────────────────────────────────────────────────────────────────────────────
-function detectSupport() {
-  if (typeof window === 'undefined') return { isSupported: false, isBrowserWarning: false }
-  const hasApi = 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
-  return { isSupported: hasApi, isBrowserWarning: !hasApi }
+export function isMobileDevice(customUA?: string): boolean {
+  const ua = customUA ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '')
+  if (!ua) return false
+  return (
+    /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  )
+}
+
+export function detectSupport(customUA?: string) {
+  const hasApi =
+    typeof window !== 'undefined'
+      ? 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window
+      : false
+  const ua = customUA ?? (typeof navigator !== 'undefined' ? navigator.userAgent : '')
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  const isSafari = /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|Android/.test(ua)
+  const isIOSSafari = isIOS || isSafari
+  return {
+    isSupported: hasApi,
+    isBrowserWarning: typeof window !== 'undefined' ? !hasApi : false,
+    isIOSSafari,
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -147,29 +173,60 @@ export function useSpeechRecognition(
   const [lang, setLangState] = useState<SupportedLang>('id-ID')
   const [audioLevel, setAudioLevel] = useState<number>(0)
 
-  const { isSupported, isBrowserWarning } = detectSupport()
+  const { isSupported, isBrowserWarning, isIOSSafari } = detectSupport()
 
   // ── Refs (tidak memicu re-render, aman dalam closure) ────────────────────
   const recognitionRef   = useRef<ISpeechRecognition | null>(null)
   const statusRef        = useRef<RecordingStatus>('idle')
   const langRef          = useRef<SupportedLang>('id-ID')
   const shouldRestartRef = useRef<boolean>(false)
+  const isRestartingRef  = useRef<boolean>(false)
   const restartTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const silenceTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Ref untuk callback onFinalChunk — selalu terkini tanpa re-init recognition
+  // Ref untuk callback onFinalChunk & dialectMode
   const onFinalChunkRef = useRef(options?.onFinalChunk)
   useEffect(() => { onFinalChunkRef.current = options?.onFinalChunk }, [options?.onFinalChunk])
 
-  // Audio analyser refs (dicegah dari kebocoran memori)
+  const dialectModeRef = useRef(options?.dialectMode ?? 'standard')
+  useEffect(() => { dialectModeRef.current = options?.dialectMode ?? 'standard' }, [options?.dialectMode])
+
+  // Audio analyser refs
   const audioCtxRef     = useRef<AudioContext | null>(null)
   const animFrameRef    = useRef<number | null>(null)
   const streamRef       = useRef<MediaStream | null>(null)
+  const analyserStartingRef = useRef<boolean>(false)
 
   // Sync statusRef
   useEffect(() => { statusRef.current = status }, [status])
 
+  // ── Penanganan Pengingat Kesunyian (>8 detik) ─────────────────────────────
+  const clearSilenceTimer = useCallback(() => {
+    if (silenceTimerRef.current) {
+      clearTimeout(silenceTimerRef.current)
+      silenceTimerRef.current = null
+    }
+  }, [])
+
+  const resetSilenceTimer = useCallback(() => {
+    clearSilenceTimer()
+    if (statusRef.current === 'recording') {
+      silenceTimerRef.current = setTimeout(() => {
+        if (statusRef.current === 'recording') {
+          setError({
+            code: 'no-speech-warning',
+            title: 'Suara Tidak Terdeteksi',
+            message: 'Mikrofon aktif tapi suara tidak terdeteksi, periksa izin atau coba headset',
+            tip: 'Pastikan mikrofon tidak dibisukan (unmuted) pada perangkat atau coba gunakan headset.',
+          })
+        }
+      }, 8000)
+    }
+  }, [clearSilenceTimer])
+
   // ── Pembersihan aman audio analyser (Anti Memory Leak) ───────────────────
   const stopAudioAnalyser = useCallback(() => {
+    analyserStartingRef.current = false
     if (animFrameRef.current !== null) {
       cancelAnimationFrame(animFrameRef.current)
       animFrameRef.current = null
@@ -185,16 +242,31 @@ export function useSpeechRecognition(
     setAudioLevel(0)
   }, [])
 
-  // ── Mulai audio analyser ─────────────────────────────────────────────────
+  // ── Mulai audio analyser (Opsional, Desktop only, aman tanpa bentrok mic) ─
   const startAudioAnalyser = useCallback(async () => {
+    // Pada perangkat mobile: jangan jalankan getUserMedia bersamaan agar tidak merebut mikrofon dari Web Speech API
+    if (isMobileDevice()) {
+      return
+    }
+
+    if (analyserStartingRef.current || streamRef.current) return
+    analyserStartingRef.current = true
+
     try {
-      // Pastikan analyser sebelumnya sudah bersih sebelum membuat baru
+      // Pastikan analyser sebelumnya sudah bersih
       stopAudioAnalyser()
 
+      // getUserMedia cadangan: gagal dengan aman tanpa mematikan SpeechRecognition
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (!analyserStartingRef.current || statusRef.current !== 'recording') {
+        stream.getTracks().forEach(t => t.stop())
+        return
+      }
       streamRef.current = stream
 
-      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      const AudioCtxClass =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       if (!AudioCtxClass) return
 
       const ctx = new AudioCtxClass()
@@ -202,6 +274,7 @@ export function useSpeechRecognition(
 
       const analyser = ctx.createAnalyser()
       analyser.fftSize = 256
+      analyser.smoothingTimeConstant = 0.5
       const source = ctx.createMediaStreamSource(stream)
       source.connect(analyser)
 
@@ -215,7 +288,10 @@ export function useSpeechRecognition(
       }
       animFrameRef.current = requestAnimationFrame(tick)
     } catch {
-      // Gagal diam-diam jika mic tidak mendukung analyser
+      // Gagal diam-diam jika mic tidak mendukung analyser simultan
+      setAudioLevel(0)
+    } finally {
+      analyserStartingRef.current = false
     }
   }, [stopAudioAnalyser])
 
@@ -223,6 +299,12 @@ export function useSpeechRecognition(
   const cleanupRecognition = useCallback((rec: ISpeechRecognition | null) => {
     if (!rec) return
     rec.onstart = null
+    rec.onaudiostart = null
+    rec.onsoundstart = null
+    rec.onspeechstart = null
+    rec.onspeechend = null
+    rec.onsoundend = null
+    rec.onaudioend = null
     rec.onresult = null
     rec.onerror = null
     rec.onend = null
@@ -247,59 +329,132 @@ export function useSpeechRecognition(
   // ── Pasang event listeners ───────────────────────────────────────────────
   const attachListeners = useCallback(
     (rec: ISpeechRecognition) => {
-      // Pelacak index final untuk menjamin ANTI-DUPLIKASI
+      // Pelacak index final untuk menjamin ANTI-DUPLIKASI per instance
       let lastFinalProcessedIndex = -1
 
       rec.onstart = () => {
         if (rec !== recognitionRef.current) return
-        setError(null)
+        setError(prev => (prev?.code === 'no-speech-warning' ? null : prev))
+        resetSilenceTimer()
+      }
+
+      rec.onaudiostart = () => {
+        if (rec !== recognitionRef.current) return
+        resetSilenceTimer()
+        // Audio capture dimulai, jalankan analyser sekunder secara aman di background desktop
+        if (!isMobileDevice() && !streamRef.current) {
+          void startAudioAnalyser()
+        }
+      }
+
+      rec.onsoundstart = () => {
+        if (rec !== recognitionRef.current) return
+        setError(prev => (prev?.code === 'no-speech-warning' ? null : prev))
+        resetSilenceTimer()
+        // Indikasi suara responsif jika analyser mic tidak aktif
+        if (!streamRef.current) {
+          setAudioLevel(35)
+        }
+      }
+
+      rec.onspeechstart = () => {
+        if (rec !== recognitionRef.current) return
+        setError(prev => (prev?.code === 'no-speech-warning' ? null : prev))
+        resetSilenceTimer()
+        if (!streamRef.current) {
+          setAudioLevel(70)
+        }
+      }
+
+      rec.onspeechend = () => {
+        if (rec !== recognitionRef.current) return
+        if (!streamRef.current) {
+          setAudioLevel(15)
+        }
+      }
+
+      rec.onsoundend = () => {
+        if (rec !== recognitionRef.current) return
+        if (!streamRef.current) {
+          setAudioLevel(0)
+        }
       }
 
       rec.onresult = (event: ISpeechRecognitionEvent) => {
         if (rec !== recognitionRef.current) return
+        setError(prev => (prev?.code === 'no-speech-warning' ? null : prev))
+        resetSilenceTimer()
+
         let interim = ''
         let finalChunk = ''
 
-        // Cegah duplikasi teks jika resultIndex berulang dari browser
+        // 1. Proses segmen final (Anti-duplikasi via lastFinalProcessedIndex)
         const startIndex = Math.max(event.resultIndex, lastFinalProcessedIndex + 1)
         for (let i = startIndex; i < event.results.length; i++) {
           const result = event.results[i]
           if (result.isFinal) {
-            // Evaluasi semua alternatif (hingga 5 alternatif)
-            const alternatives: SpeechAlternativeItem[] = []
-            const altLen = result.length || 1
-            for (let j = 0; j < altLen; j++) {
-              if (result[j]) {
-                alternatives.push({
-                  transcript: result[j].transcript,
-                  confidence: result[j].confidence,
-                })
+            let transcriptText = ''
+
+            if (dialectModeRef.current === 'bekasi') {
+              // Mode Logat Bekasi: Evaluasi multi-alternatif (hingga 5 alternatif)
+              const alternatives: SpeechAlternativeItem[] = []
+              const altLen = result.length || 0
+              for (let j = 0; j < altLen; j++) {
+                if (result[j]?.transcript) {
+                  alternatives.push({
+                    transcript: result[j].transcript,
+                    confidence: result[j].confidence,
+                  })
+                }
               }
+              const best = alternatives.length > 0 ? selectBestAlternative(alternatives) : null
+              transcriptText = best?.selectedTranscript?.trim() || result[0]?.transcript?.trim() || ''
+            } else {
+              // Mode Logat Standar: lewati teks apa adanya dari mesin
+              transcriptText = result[0]?.transcript?.trim() || ''
             }
-            const best = selectBestAlternative(alternatives)
-            finalChunk += best.selectedTranscript
+
+            if (transcriptText) {
+              finalChunk += (finalChunk ? ' ' : '') + transcriptText
+            }
             lastFinalProcessedIndex = i
-          } else {
-            // Interim tidak dikonversi logat, murni hasil sementara
+          }
+        }
+
+        // 2. Kumpulkan hasil sementara (Interim) dari semua hasil non-final yang aktif
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i]
+          if (!result.isFinal && result[0]?.transcript) {
             interim += result[0].transcript
           }
         }
+
+        // Kirim chunk final ke pemanggil (App.tsx -> useSession)
         if (finalChunk.trim()) {
           onFinalChunkRef.current?.(finalChunk.trim())
         }
+
+        // Update state teks sementara & responsivitas visualizer
         setInterimText(interim)
+        if (!streamRef.current && interim) {
+          setAudioLevel(Math.min(90, 45 + interim.length * 2))
+        }
       }
 
       rec.onerror = (event: ISpeechRecognitionErrorEvent) => {
         if (rec !== recognitionRef.current) return
         const code = event.error
         if (code === 'aborted') return
-        if (code === 'no-speech') return // biarkan auto-restart menangani jika masih mode rekam
+        if (code === 'no-speech') {
+          // Biarkan auto-restart menangani Chrome hening jika masih dalam mode merekam
+          return
+        }
 
         setError(buildError(code))
         shouldRestartRef.current = false
         setStatus('idle')
         statusRef.current = 'idle'
+        clearSilenceTimer()
         stopAudioAnalyser()
       }
 
@@ -308,32 +463,74 @@ export function useSpeechRecognition(
         if (rec !== recognitionRef.current) return
         setInterimText('')
 
-        if (shouldRestartRef.current) {
-          // Auto-restart untuk mengatasi Chrome yang berhenti saat hening
+        if (shouldRestartRef.current && statusRef.current === 'recording') {
+          // Auto-restart aman tanpa duplikasi instance
+          if (restartTimerRef.current) {
+            clearTimeout(restartTimerRef.current)
+          }
+
           restartTimerRef.current = setTimeout(() => {
-            if (!shouldRestartRef.current) return
-            cleanupRecognition(recognitionRef.current)
+            restartTimerRef.current = null
+            if (!shouldRestartRef.current || statusRef.current !== 'recording' || isRestartingRef.current) {
+              return
+            }
+
+            isRestartingRef.current = true
+            const oldRec = recognitionRef.current
+            recognitionRef.current = null
+            cleanupRecognition(oldRec)
+
             const newRec = createRecognition()
-            if (!newRec) return
+            if (!newRec) {
+              isRestartingRef.current = false
+              return
+            }
+
             attachListeners(newRec)
             recognitionRef.current = newRec
+
             try {
               newRec.start()
             } catch {
-              shouldRestartRef.current = false
-              setStatus('idle')
-              statusRef.current = 'idle'
+              // Jika Chrome masih memproses penutupan stream, coba sekali lagi dalam 400ms
+              setTimeout(() => {
+                if (!shouldRestartRef.current || statusRef.current !== 'recording') {
+                  isRestartingRef.current = false
+                  return
+                }
+                try {
+                  newRec.start()
+                } catch {
+                  shouldRestartRef.current = false
+                  setStatus('idle')
+                  statusRef.current = 'idle'
+                  clearSilenceTimer()
+                  stopAudioAnalyser()
+                } finally {
+                  isRestartingRef.current = false
+                }
+              }, 400)
+              return
             }
-          }, 300)
+            isRestartingRef.current = false
+          }, 250)
         } else {
           if (statusRef.current === 'stopping') {
             setStatus('idle')
             statusRef.current = 'idle'
+            clearSilenceTimer()
           }
         }
       }
     },
-    [createRecognition, stopAudioAnalyser, cleanupRecognition],
+    [
+      createRecognition,
+      stopAudioAnalyser,
+      cleanupRecognition,
+      startAudioAnalyser,
+      resetSilenceTimer,
+      clearSilenceTimer,
+    ],
   )
 
   // ── Cleanup saat unmount (Anti Memory Leak) ───────────────────────────────
@@ -344,11 +541,12 @@ export function useSpeechRecognition(
         clearTimeout(restartTimerRef.current)
         restartTimerRef.current = null
       }
+      clearSilenceTimer()
       cleanupRecognition(recognitionRef.current)
       recognitionRef.current = null
       stopAudioAnalyser()
     }
-  }, [stopAudioAnalyser, cleanupRecognition])
+  }, [stopAudioAnalyser, cleanupRecognition, clearSilenceTimer])
 
   // ─────────────────────────────────────────────────────────────────────────
   // Public actions (Mulai, Jeda, Lanjut, Berhenti)
@@ -363,7 +561,10 @@ export function useSpeechRecognition(
       restartTimerRef.current = null
     }
 
-    cleanupRecognition(recognitionRef.current)
+    const oldRec = recognitionRef.current
+    recognitionRef.current = null
+    cleanupRecognition(oldRec)
+
     const rec = createRecognition()
     if (!rec) return
 
@@ -372,17 +573,19 @@ export function useSpeechRecognition(
     shouldRestartRef.current = true
 
     try {
+      // 1. SpeechRecognition SELALU dipanggil lebih dulu langsung dari interaksi pengguna
       rec.start()
       setStatus('recording')
       statusRef.current = 'recording'
-      void startAudioAnalyser()
+      resetSilenceTimer()
     } catch {
       setError(buildError('audio-capture'))
       shouldRestartRef.current = false
       setStatus('idle')
       statusRef.current = 'idle'
+      clearSilenceTimer()
     }
-  }, [isSupported, createRecognition, attachListeners, startAudioAnalyser, cleanupRecognition])
+  }, [isSupported, createRecognition, attachListeners, cleanupRecognition, resetSilenceTimer, clearSilenceTimer])
 
   const pauseRecording = useCallback(() => {
     if (statusRef.current !== 'recording') return
@@ -392,16 +595,18 @@ export function useSpeechRecognition(
       clearTimeout(restartTimerRef.current)
       restartTimerRef.current = null
     }
+    clearSilenceTimer()
 
     // Stop recognition saat ini secara rapi
-    cleanupRecognition(recognitionRef.current)
+    const oldRec = recognitionRef.current
     recognitionRef.current = null
+    cleanupRecognition(oldRec)
 
     setStatus('paused')
     statusRef.current = 'paused'
     setInterimText('')
     stopAudioAnalyser()
-  }, [stopAudioAnalyser, cleanupRecognition])
+  }, [stopAudioAnalyser, cleanupRecognition, clearSilenceTimer])
 
   const resumeRecording = useCallback(() => {
     if (statusRef.current !== 'paused') return
@@ -413,7 +618,10 @@ export function useSpeechRecognition(
       restartTimerRef.current = null
     }
 
-    cleanupRecognition(recognitionRef.current)
+    const oldRec = recognitionRef.current
+    recognitionRef.current = null
+    cleanupRecognition(oldRec)
+
     const rec = createRecognition()
     if (!rec) return
 
@@ -425,14 +633,15 @@ export function useSpeechRecognition(
       rec.start()
       setStatus('recording')
       statusRef.current = 'recording'
-      void startAudioAnalyser()
+      resetSilenceTimer()
     } catch {
       setError(buildError('audio-capture'))
       shouldRestartRef.current = false
       setStatus('idle')
       statusRef.current = 'idle'
+      clearSilenceTimer()
     }
-  }, [createRecognition, attachListeners, startAudioAnalyser, cleanupRecognition])
+  }, [createRecognition, attachListeners, cleanupRecognition, resetSilenceTimer, clearSilenceTimer])
 
   const stopRecording = useCallback(() => {
     shouldRestartRef.current = false
@@ -441,6 +650,7 @@ export function useSpeechRecognition(
       clearTimeout(restartTimerRef.current)
       restartTimerRef.current = null
     }
+    clearSilenceTimer()
 
     setStatus('stopping')
     statusRef.current = 'stopping'
@@ -460,7 +670,7 @@ export function useSpeechRecognition(
       setStatus('idle')
       statusRef.current = 'idle'
     }, 400)
-  }, [stopAudioAnalyser, cleanupRecognition])
+  }, [stopAudioAnalyser, cleanupRecognition, clearSilenceTimer])
 
   const clearError = useCallback(() => {
     setError(null)
@@ -476,7 +686,10 @@ export function useSpeechRecognition(
           clearTimeout(restartTimerRef.current)
           restartTimerRef.current = null
         }
-        cleanupRecognition(recognitionRef.current)
+        clearSilenceTimer()
+        const oldRec = recognitionRef.current
+        recognitionRef.current = null
+        cleanupRecognition(oldRec)
 
         restartTimerRef.current = setTimeout(() => {
           const rec = createRecognition()
@@ -486,6 +699,7 @@ export function useSpeechRecognition(
           shouldRestartRef.current = true
           try {
             rec.start()
+            resetSilenceTimer()
           } catch {
             shouldRestartRef.current = false
             setStatus('idle')
@@ -494,7 +708,7 @@ export function useSpeechRecognition(
         }, 300)
       }
     },
-    [createRecognition, attachListeners, cleanupRecognition],
+    [createRecognition, attachListeners, cleanupRecognition, resetSilenceTimer, clearSilenceTimer],
   )
 
   return {
@@ -502,6 +716,7 @@ export function useSpeechRecognition(
     status,
     isSupported,
     isBrowserWarning,
+    isIOSSafari,
     error,
     lang,
     audioLevel,
