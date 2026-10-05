@@ -1,8 +1,11 @@
 /**
  * SpeakerPanel.tsx
- * Panel manajemen pembicara: tambah, ganti nama, pilih aktif (klik + shortcut 1-9), hapus
- * Lengkap dengan dukungan Dark Mode dan kontras WCAG AA.
+ * Panel manajemen pembicara yang ringkas dalam satu baris (horizontal chips):
+ * - Memilih pembicara aktif langsung dengan mengetuk chip
+ * - Tambah pembicara baru (+ Tambah)
+ * - Ubah nama atau hapus pembicara
  */
+
 import { useState } from 'react'
 import { UserPlus, Check, Pencil, Trash2, X, Users } from 'lucide-react'
 import type { Speaker } from '../types/session'
@@ -25,7 +28,7 @@ export default function SpeakerPanel({
   onDelete,
 }: SpeakerPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName]   = useState('')
+  const [editName, setEditName] = useState('')
 
   const startEdit = (sp: Speaker) => {
     setEditingId(sp.id)
@@ -41,78 +44,39 @@ export default function SpeakerPanel({
 
   return (
     <section
-      className="glass-card rounded-2xl p-4 sm:p-5 animate-fade-in shadow-xs"
-      aria-label="Panel manajemen pembicara"
+      className="glass-card rounded-2xl px-3.5 sm:px-4 py-2.5 animate-fade-in shadow-xs"
+      aria-label="Panel pemilihan pembicara aktif"
     >
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            Daftar Pembicara
-          </h2>
-          <span className="text-xs text-slate-500 dark:text-slate-400 hidden sm:inline">
-            · tekan angka 1–{Math.min(speakers.length, 9)} di keyboard
-          </span>
-        </div>
-        <button
-          id="btn-add-speaker"
-          type="button"
-          onClick={onAdd}
-          disabled={speakers.length >= 9}
-          title="Tambah pembicara baru (maksimal 9)"
-          aria-label="Tambah pembicara"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 dark:text-primary-400
-                     hover:bg-primary-50 dark:hover:bg-primary-950/40 px-2.5 py-1.5 rounded-xl border border-primary-200
-                     dark:border-primary-800 transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          <span>Tambah</span>
-        </button>
-      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Label ringkas */}
+        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 mr-1 flex-shrink-0">
+          <Users className="w-3.5 h-3.5" />
+          <span>Pembicara:</span>
+        </span>
 
-      {/* ── Speaker list ── */}
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Pilihan pembicara">
-        {speakers.map((sp, idx) => {
-          const isActive  = sp.id === activeSpeakerId
-          const isEditing = editingId === sp.id
-          const shortcut  = idx < 9 ? idx + 1 : null
+        {/* Daftar Chips Pembicara */}
+        <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0" role="group" aria-label="Pilihan pembicara">
+          {speakers.map((sp, idx) => {
+            const isActive = sp.id === activeSpeakerId
+            const isEditing = editingId === sp.id
+            const shortcut = idx < 9 ? idx + 1 : null
 
-          return (
-            <div
-              key={sp.id}
-              className={`
-                flex items-center gap-1.5 rounded-xl transition-all duration-200
-                ${isActive
-                  ? 'border-2 shadow-xs'
-                  : 'border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-600'
-                }
-              `}
-              style={
-                isActive
-                  ? {
-                      borderColor: sp.color,
-                      backgroundColor: `${sp.color}15`,
-                    }
-                  : {}
-              }
-            >
-              {isEditing ? (
-                /* Edit mode */
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+            if (isEditing) {
+              return (
+                <div
+                  key={sp.id}
+                  className="flex items-center gap-1 px-2 py-1 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600"
+                >
                   <input
                     autoFocus
-                    id={`speaker-name-input-${sp.id}`}
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
                     onKeyDown={e => {
                       if (e.key === 'Enter') commitEdit(sp.id)
                       if (e.key === 'Escape') cancelEdit()
                     }}
-                    className="w-28 text-xs font-semibold bg-transparent border-b border-primary-500
-                               text-slate-800 dark:text-slate-100 focus:outline-none"
-                    maxLength={30}
-                    aria-label={`Ubah nama ${sp.name}`}
+                    className="w-24 text-xs font-semibold bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none"
+                    maxLength={25}
                   />
                   <button
                     type="button"
@@ -126,89 +90,99 @@ export default function SpeakerPanel({
                     type="button"
                     onClick={cancelEdit}
                     aria-label="Batal ubah nama"
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 p-0.5"
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ) : (
-                /* Normal mode */
-                <>
-                  {/* Color dot + name — klik untuk pilih */}
+              )
+            }
+
+            return (
+              <div
+                key={sp.id}
+                className={`group/chip inline-flex items-center rounded-xl transition-all duration-150 border ${
+                  isActive
+                    ? 'border-slate-800 dark:border-white shadow-2xs'
+                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800/80'
+                }`}
+                style={
+                  isActive
+                    ? {
+                        backgroundColor: `${sp.color}15`,
+                        borderColor: sp.color,
+                      }
+                    : {}
+                }
+              >
+                <button
+                  type="button"
+                  id={`btn-speaker-${sp.id}`}
+                  onClick={() => onSelect(sp.id)}
+                  aria-pressed={isActive}
+                  aria-label={`Pilih pembicara ${sp.name}${shortcut ? ` (tekan tombol ${shortcut})` : ''}`}
+                  className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 text-xs font-semibold focus:outline-none"
+                >
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: sp.color }}
+                  />
+                  <span
+                    className="truncate max-w-[120px]"
+                    style={{ color: isActive ? sp.color : undefined }}
+                  >
+                    {sp.name}
+                  </span>
+                  {isActive ? (
+                    <Check className="w-3 h-3 stroke-[3]" style={{ color: sp.color }} />
+                  ) : shortcut ? (
+                    <span className="hidden sm:inline text-[10px] font-mono text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-slate-700/60 px-1 py-0.2 rounded">
+                      {shortcut}
+                    </span>
+                  ) : null}
+                </button>
+
+                {/* Edit & Hapus (tampil saat hover / fokus) */}
+                <div className="flex items-center pr-1.5 opacity-60 group-hover/chip:opacity-100 transition-opacity">
                   <button
                     type="button"
-                    id={`btn-speaker-${sp.id}`}
-                    onClick={() => onSelect(sp.id)}
-                    aria-label={`Pilih pembicara ${sp.name}${shortcut ? ` (tekan tombol ${shortcut})` : ''}`}
-                    aria-pressed={isActive}
-                    className="flex items-center gap-2 pl-2.5 pr-1 py-1.5 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    onClick={() => startEdit(sp)}
+                    aria-label={`Ubah nama ${sp.name}`}
+                    title="Ubah nama pembicara"
+                    className="p-1 rounded text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                   >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0 transition-shadow"
-                      style={{
-                        backgroundColor: sp.color,
-                        boxShadow: isActive ? `0 0 0 2px #ffffff, 0 0 0 4px ${sp.color}` : 'none',
-                      }}
-                    />
-                    <span
-                      className="text-xs font-bold max-w-[110px] truncate text-slate-800 dark:text-slate-200"
-                      style={{ color: isActive ? sp.color : undefined }}
-                    >
-                      {sp.name}
-                    </span>
-                    {shortcut && (
-                      <span className="hidden sm:inline text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 py-0.2 rounded">
-                        {shortcut}
-                      </span>
-                    )}
-                    {isActive && (
-                      <Check
-                        className="w-3.5 h-3.5 flex-shrink-0"
-                        style={{ color: sp.color }}
-                        strokeWidth={3}
-                      />
-                    )}
+                    <Pencil className="w-3 h-3" />
                   </button>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-0.5 pr-1.5">
+                  {speakers.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => startEdit(sp)}
-                      aria-label={`Ganti nama ${sp.name}`}
-                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40 transition-colors"
+                      onClick={() => onDelete(sp.id)}
+                      aria-label={`Hapus ${sp.name}`}
+                      title="Hapus pembicara ini"
+                      className="p-1 rounded text-slate-400 hover:text-rose-600 dark:hover:text-rose-400"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
-                    {speakers.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => onDelete(sp.id)}
-                        aria-label={`Hapus ${sp.name}`}
-                        className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          )
-        })}
-      </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
 
-      {/* ── Tip ── */}
-      <p className="mt-2.5 text-[11px] text-slate-500 dark:text-slate-400">
-        Pembicara aktif:{' '}
-        <span
-          className="font-bold underline decoration-2 underline-offset-2"
-          style={{ color: speakers.find(s => s.id === activeSpeakerId)?.color }}
-        >
-          {speakers.find(s => s.id === activeSpeakerId)?.name ?? '—'}
-        </span>
-        {' '}· Setiap perkataan yang Anda rekam akan otomatis dilabeli atas nama pembicara aktif ini.
-      </p>
+          {/* Tombol Tambah Pembicara */}
+          <button
+            type="button"
+            id="btn-add-speaker"
+            onClick={onAdd}
+            disabled={speakers.length >= 9}
+            aria-label="Tambah pembicara baru"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-950/40 px-2.5 py-1 rounded-xl border border-dashed border-primary-300 dark:border-primary-700 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Tambah</span>
+          </button>
+        </div>
+      </div>
     </section>
   )
 }

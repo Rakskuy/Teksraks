@@ -134,11 +134,8 @@ export default function DialectPreviewPanel({
           <div>
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider flex items-center gap-1.5">
               <span>Pratinjau Logat (Komparasi Teks)</span>
-              <span className="text-[10px] lowercase font-normal px-2 py-0.5 bg-amber-100/80 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 rounded-full border border-amber-300/40 dark:border-amber-700/40">
-                2 kolom
-              </span>
             </h3>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">
+            <p className="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">
               Bandingkan teks asli (kiri) dengan hasil konversi logat Bekasi (kanan) secara instan.
             </p>
           </div>

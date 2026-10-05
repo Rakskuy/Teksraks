@@ -1,9 +1,11 @@
 /**
  * ExportPanel.tsx
- * Panel ekspor transkripsi dalam 3 format (TXT, DOCX, PDF)
- * Dilengkapi opsi timestamp, opsi nama pembicara, pratinjau nama file otomatis,
- * tombol pemuat data uji (2.000+ kata, 3 pembicara), dan callback unduh sukses.
+ * Panel ekspor berkas transkrip dalam 3 format (TXT, DOCX, PDF):
+ * - Opsi waktu [mm:ss], nama pembicara, dan ekspor teks baku
+ * - Tooltip penjelasan saat tombol nonaktif: "Rekam atau muat data uji dulu"
+ * - Hierarki visual bersih tanpa tombol pemuat data uji yang mengganggu pengguna akhir
  */
+
 import { useState } from 'react'
 import {
   FileText,
@@ -12,7 +14,6 @@ import {
   Loader2,
   Clock,
   UserCheck,
-  Sparkles,
   FileCheck,
   RotateCcw,
 } from 'lucide-react'
@@ -24,7 +25,6 @@ import type { ExportSessionPayload, ExportOptions } from '../utils/exportTxt'
 
 interface ExportPanelProps {
   session: ExportSessionPayload
-  onLoadSampleData?: () => void
   onExportSuccess?: () => void
 }
 
@@ -32,7 +32,6 @@ type ExportFormat = 'txt' | 'docx' | 'pdf'
 
 export default function ExportPanel({
   session,
-  onLoadSampleData,
   onExportSuccess,
 }: ExportPanelProps) {
   const [loading, setLoading] = useState<ExportFormat | null>(null)
@@ -49,6 +48,7 @@ export default function ExportPanel({
   }, 0)
 
   const previewBaseName = formatFilename(session.title, session.date)
+  const disabledTooltip = !hasSegments ? 'Rekam atau muat data uji dulu' : undefined
 
   const handleExport = async (format: ExportFormat) => {
     if (!hasSegments || loading !== null) return
@@ -71,47 +71,30 @@ export default function ExportPanel({
 
   return (
     <section
-      className="glass-card rounded-2xl p-5 sm:p-6 animate-fade-in space-y-4 shadow-xs"
-      aria-label="Panel unduh berkas transkripsi"
+      className="glass-card rounded-2xl p-4 sm:p-5 animate-fade-in space-y-3.5 shadow-xs border border-slate-200/80 dark:border-slate-800"
+      aria-label="Panel unduh berkas transkrip"
     >
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
         <div>
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Download className="w-4 h-4 text-primary-600 dark:text-primary-400" />
-            Unduh Dokumen Transkripsi
+            <span>Unduh Berkas Transkrip</span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             {hasSegments
               ? `Tersedia ${session.segments.length} segmen (${totalWords.toLocaleString('id-ID')} kata). Bebas tanpa watermark.`
-              : 'Mulai merekam atau muat data sampel untuk mengunduh dokumen.'}
+              : 'Rekam atau muat data uji dulu untuk mengunduh dokumen.'}
           </p>
         </div>
-
-        {/* Load sample data button for quick verification */}
-        {onLoadSampleData && (
-          <button
-            type="button"
-            id="btn-load-sample"
-            onClick={onLoadSampleData}
-            title="Muat transkrip dummy panjang psikologi (2.000+ kata, 3 pembicara) untuk uji coba unduhan"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-primary-700
-                       dark:text-primary-300 bg-primary-50 dark:bg-primary-950/60 hover:bg-primary-100
-                       dark:hover:bg-primary-900/60 border border-primary-200/80 dark:border-primary-800
-                       rounded-xl transition-colors shadow-2xs active:scale-95 self-start sm:self-auto"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-            <span>Muat Data Uji (2.000+ Kata)</span>
-          </button>
-        )}
       </div>
 
       {/* Opsi sebelum unduh */}
-      <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-slate-50/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 text-xs">
-        <span className="font-bold text-slate-700 dark:text-slate-300">Opsi Ekspor:</span>
+      <div className="flex flex-wrap items-center gap-3 sm:gap-5 bg-slate-50/80 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/60 text-xs">
+        <span className="font-bold text-slate-700 dark:text-slate-200">Opsi Ekspor:</span>
 
         {/* Toggle Timestamp */}
-        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
             id="checkbox-opt-timestamp"
@@ -123,12 +106,12 @@ export default function ExportPanel({
           />
           <span className="flex items-center gap-1 text-slate-700 dark:text-slate-200 font-medium">
             <Clock className="w-3.5 h-3.5 text-slate-400" />
-            Sertakan Waktu ([mm:ss])
+            Waktu ([mm:ss])
           </span>
         </label>
 
         {/* Toggle Speaker */}
-        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
             id="checkbox-opt-speaker"
@@ -140,12 +123,12 @@ export default function ExportPanel({
           />
           <span className="flex items-center gap-1 text-slate-700 dark:text-slate-200 font-medium">
             <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-            Sertakan Nama Pembicara
+            Nama Pembicara
           </span>
         </label>
 
         {/* Toggle Raw Text */}
-        <label className="inline-flex items-center gap-2 cursor-pointer select-none">
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
             id="checkbox-opt-rawtext"
@@ -157,88 +140,82 @@ export default function ExportPanel({
           />
           <span className="flex items-center gap-1 text-slate-700 dark:text-slate-200 font-medium">
             <RotateCcw className="w-3.5 h-3.5 text-amber-500" />
-            Ekspor teks asli (tanpa logat)
+            Teks Baku Asli
           </span>
         </label>
 
         {/* Filename preview */}
-        <div className="w-full sm:w-auto sm:ml-auto text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+        <div className="w-full sm:w-auto sm:ml-auto text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1 pt-1 sm:pt-0">
           <FileCheck className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-          <span>Nama berkas: </span>
-          <code className="text-slate-700 dark:text-slate-200 font-mono bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+          <span>Berkas: </span>
+          <code className="text-slate-800 dark:text-slate-200 font-mono bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
             {previewBaseName}.[ext]
           </code>
         </div>
       </div>
 
-      {/* Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-        {/* TXT */}
-        <button
-          id="btn-export-txt"
-          type="button"
-          onClick={() => handleExport('txt')}
-          disabled={!hasSegments || loading !== null}
-          aria-label="Unduh sebagai file teks TXT"
-          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700
-                     hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50
-                     dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 font-bold shadow-xs
-                     transition-all disabled:opacity-40 disabled:cursor-not-allowed group active:scale-98"
-        >
-          {loading === 'txt' ? (
-            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
-          ) : (
-            <FileText className="w-5 h-5 text-slate-600 dark:text-slate-300 group-hover:scale-110 transition-transform" />
-          )}
-          <div className="text-left leading-tight">
-            <div className="text-sm font-bold">Unduh TXT</div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">Teks Biasa (UTF-8)</div>
-          </div>
-        </button>
-
-        {/* DOCX */}
+      {/* Buttons: Hierarki jelas (Word DOCX sebagai primer terfokus, TXT & PDF sekunder) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+        {/* DOCX - Primary Card */}
         <button
           id="btn-export-docx"
           type="button"
           onClick={() => handleExport('docx')}
           disabled={!hasSegments || loading !== null}
+          title={disabledTooltip}
           aria-label="Unduh sebagai dokumen Word DOCX"
-          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/60
-                     hover:border-blue-300 dark:hover:border-blue-800 bg-blue-50/50 dark:bg-blue-950/30 hover:bg-blue-50
-                     dark:hover:bg-blue-950/50 text-blue-900 dark:text-blue-300 font-bold shadow-xs
-                     transition-all disabled:opacity-40 disabled:cursor-not-allowed group active:scale-98"
+          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-slate-800 dark:border-white bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold shadow-xs hover:bg-black dark:hover:bg-slate-100 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-98"
         >
           {loading === 'docx' ? (
-            <Loader2 className="w-5 h-5 animate-spin text-blue-600 dark:text-blue-400" />
+            <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            <FileType className="w-5 h-5 text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform" />
+            <FileType className="w-5 h-5" />
           )}
           <div className="text-left leading-tight">
-            <div className="text-sm font-bold">Unduh Word (DOCX)</div>
-            <div className="text-[11px] text-blue-700/80 dark:text-blue-400 font-normal">Spasi 1.5, Calibri 12pt</div>
+            <div className="text-xs sm:text-sm font-bold">Unduh Dokumen Word</div>
+            <div className="text-[11px] opacity-80 font-normal">DOCX (Format Rapi)</div>
           </div>
         </button>
 
-        {/* PDF */}
+        {/* TXT - Secondary Card */}
+        <button
+          id="btn-export-txt"
+          type="button"
+          onClick={() => handleExport('txt')}
+          disabled={!hasSegments || loading !== null}
+          title={disabledTooltip}
+          aria-label="Unduh sebagai file teks TXT"
+          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 font-bold shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-98"
+        >
+          {loading === 'txt' ? (
+            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+          ) : (
+            <FileText className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+          )}
+          <div className="text-left leading-tight">
+            <div className="text-xs sm:text-sm font-bold">Unduh Teks Biasa</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">TXT (UTF-8)</div>
+          </div>
+        </button>
+
+        {/* PDF - Secondary Card */}
         <button
           id="btn-export-pdf"
           type="button"
           onClick={() => handleExport('pdf')}
           disabled={!hasSegments || loading !== null}
+          title={disabledTooltip}
           aria-label="Unduh sebagai dokumen PDF"
-          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-red-200 dark:border-red-900/60
-                     hover:border-red-300 dark:hover:border-red-800 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-50
-                     dark:hover:bg-red-950/50 text-red-900 dark:text-red-300 font-bold shadow-xs
-                     transition-all disabled:opacity-40 disabled:cursor-not-allowed group active:scale-98"
+          className="flex items-center justify-center gap-3 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-100 font-bold shadow-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-98"
         >
           {loading === 'pdf' ? (
-            <Loader2 className="w-5 h-5 animate-spin text-red-600 dark:text-red-400" />
+            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
           ) : (
-            <Download className="w-5 h-5 text-red-600 dark:text-red-400 group-hover:scale-110 transition-transform" />
+            <Download className="w-5 h-5 text-slate-600 dark:text-slate-300" />
           )}
           <div className="text-left leading-tight">
-            <div className="text-sm font-bold">Unduh PDF</div>
-            <div className="text-[11px] text-red-700/80 dark:text-red-400 font-normal">A4, Halaman Otomatis</div>
+            <div className="text-xs sm:text-sm font-bold">Unduh PDF</div>
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">PDF A4 (Cetak)</div>
           </div>
         </button>
       </div>

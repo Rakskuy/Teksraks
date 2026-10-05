@@ -43,6 +43,7 @@ interface MobileSettingsSheetProps {
   onOpenDictionary: () => void
   onOpenWhisper: () => void
   onOpenGuide: () => void
+  onLoadSampleData?: () => void
   onClearAllData: () => void
 }
 
@@ -68,6 +69,7 @@ export default function MobileSettingsSheet({
   onOpenDictionary,
   onOpenWhisper,
   onOpenGuide,
+  onLoadSampleData,
   onClearAllData,
 }: MobileSettingsSheetProps) {
   const [showConfirmClear, setShowConfirmClear] = useState(false)
@@ -324,6 +326,23 @@ export default function MobileSettingsSheet({
                 </span>
                 <span className="text-xs text-slate-400">Buka →</span>
               </button>
+
+              {onLoadSampleData && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onLoadSampleData()
+                    onClose()
+                  }}
+                  className="min-h-[48px] px-4 rounded-xl flex items-center justify-between bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-750"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-amber-500" />
+                    <span>Mode Dev: Muat Data Uji Transkrip</span>
+                  </span>
+                  <span className="text-xs text-slate-400">Muat →</span>
+                </button>
+              )}
             </div>
           </div>
 

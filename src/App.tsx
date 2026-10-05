@@ -29,10 +29,10 @@ import TranscriptArea from './components/TranscriptArea'
 import ExportPanel from './components/ExportPanel'
 import Footer from './components/Footer'
 import RestoreDialog from './components/RestoreDialog'
-import DialectSelector from './components/DialectSelector'
 import DialectPreviewPanel from './components/DialectPreviewPanel'
 import PersonalDictionaryModal from './components/PersonalDictionaryModal'
 import WhisperModal from './components/WhisperModal'
+import SettingsModal from './components/SettingsModal'
 import MobileBottomBar from './components/MobileBottomBar'
 import MobileSettingsSheet from './components/MobileSettingsSheet'
 import { applyBekasi, type DialectMode, type DialectIntensity } from './dialect'
@@ -47,6 +47,9 @@ export default function App() {
 
   // ── Modal Panduan Cara Pakai ─────────────────────────────
   const [isGuideOpen, setIsGuideOpen] = useState(false)
+
+  // ── Modal Pengaturan Terpadu (Desktop & Tablet) ──────────
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // ── Menu Pengaturan Sekunder Mobile (Bottom Sheet) ────────
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -267,17 +270,29 @@ export default function App() {
         }}
       />
 
+      {/* ── Modal Pengaturan Terpadu (Desktop & Tablet) ── */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        onOpenDictionary={() => setIsDictionaryOpen(true)}
+        onOpenWhisper={() => setIsWhisperOpen(true)}
+        onOpenGuide={() => setIsGuideOpen(true)}
+        onLoadSampleData={session.loadSampleData}
+        onClearAllData={handleClearAllData}
+      />
+
       {/* ── Header Aplikasi ── */}
       <Header
         isDark={isDark}
         onToggleDark={toggleDarkMode}
         onOpenGuide={() => setIsGuideOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
       />
 
       {/* ── Konten Utama ── */}
       <main
         id="main-content"
-        className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-5 pb-44 sm:pb-8 overflow-x-hidden"
+        className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-3.5 sm:space-y-4 pb-44 sm:pb-8 overflow-x-hidden"
       >
         {/* Banner Peringatan Browser */}
         {isBrowserWarning && <BrowserBanner />}
@@ -285,14 +300,13 @@ export default function App() {
         {/* Banner Notifikasi Error Web Speech API */}
         {error && <ErrorBanner error={error} onDismiss={clearError} />}
 
-        {/* 1. Banner Privasi & Etika Data Psikologi */}
+        {/* 1. Persetujuan Privasi (Ciut otomatis saat aktif) */}
         <PrivacyBanner
           agreed={privacyAgreed}
           onToggleAgree={handleTogglePrivacy}
-          onClearAllData={handleClearAllData}
         />
 
-        {/* 2. Informasi & Metadata Sesi (Judul, Tanggal, Catatan, Autosave) */}
+        {/* 2. Informasi Judul Sesi (Ringkas, satu baris) */}
         <SessionHeader
           title={session.title}
           date={session.date}
@@ -304,7 +318,7 @@ export default function App() {
           onNewSession={session.startNewSession}
         />
 
-        {/* 3. Panel Manajemen Pembicara (Pilih Aktif, Shortcut 1-9, Tambah/Edit) */}
+        {/* 3. Pembicara (Chip ringkas dalam satu baris) */}
         <SpeakerPanel
           speakers={session.speakers}
           activeSpeakerId={session.activeSpeakerId}
@@ -314,10 +328,7 @@ export default function App() {
           onDelete={session.deleteSpeaker}
         />
 
-        {/* 4. Tips Perekaman Audio Berkualitas di UI (Collapsible) */}
-        <AudioTipsPanel />
-
-        {/* 5. Panel Kontrol Rekam Desktop (Pada layar mobile, dikontrol via Bilah Bawah) */}
+        {/* 4. KARTU REKAMAN UTAMA (Status, Tombol Rekam Besar, Bahasa, Kontrol Tunggal Mode Logat) */}
         <div className="hidden sm:block">
           <ControlPanel
             status={status}
@@ -334,34 +345,13 @@ export default function App() {
             onLangChange={setLang}
             onDialectModeChange={handleDialectModeChange}
             onDialectIntensityChange={handleDialectIntensityChange}
-            onOpenDictionary={() => setIsDictionaryOpen(true)}
             onOpenWhisper={() => setIsWhisperOpen(true)}
-          />
-        </div>
-
-        {/* 6. Lapisan Pasca-Proses Dialek (Desktop) */}
-        <div className="hidden sm:block">
-          <DialectSelector
-            mode={dialectMode}
-            intensity={bekasiIntensity}
-            onModeChange={handleDialectModeChange}
-            onIntensityChange={handleDialectIntensityChange}
             onApplyToAllSegments={handleApplyDialectToAll}
             segmentCount={session.segments.length}
           />
         </div>
 
-        {/* 7. Panel Pratinjau Logat (Komparasi Teks Asli vs Konversi Bekasi 2 Kolom) */}
-        <DialectPreviewPanel
-          intensity={bekasiIntensity}
-          onIntensityChange={handleDialectIntensityChange}
-          segments={session.segments}
-        />
-
-        {/* 7. Panel Statistik Sesi (Kata, Durasi, Segmen, Per Pembicara) */}
-        <StatsPanel stats={session.stats} />
-
-        {/* 8. Area Transkripsi Dialog (Segmen, Live Interim, Edit, Hapus, Gabung, Find & Replace) */}
+        {/* 5. Transkrip Dialog (Area Terbesar & Paling Sentral) */}
         <TranscriptArea
           segments={session.segments}
           speakers={session.speakers}
@@ -391,7 +381,22 @@ export default function App() {
           onClearReplaceCount={session.clearReplaceCount}
         />
 
-        {/* 8. Panel Unduh Transkrip (TXT, DOCX, PDF dengan opsi & tombol data uji) */}
+        {/* 6. Pratinjau Logat (Hanya tampil & aktif saat Mode Logat = Bekasi) */}
+        {dialectMode === 'bekasi' && (
+          <DialectPreviewPanel
+            intensity={bekasiIntensity}
+            onIntensityChange={handleDialectIntensityChange}
+            segments={session.segments}
+          />
+        )}
+
+        {/* 7. Statistik Sesi (Ringkas, satu baris kecil) */}
+        <StatsPanel stats={session.stats} />
+
+        {/* 8. Tips Perekaman (Ciut secara default, terbuka saat kunjungan pertama) */}
+        <AudioTipsPanel />
+
+        {/* 9. Unduh Dokumen Transkrip (TXT, DOCX, PDF) */}
         <ExportPanel
           session={{
             title: session.title,
@@ -401,7 +406,6 @@ export default function App() {
             speakers: session.speakers,
             segments: session.segments,
           }}
-          onLoadSampleData={session.loadSampleData}
           onExportSuccess={handleExportSuccess}
         />
       </main>
@@ -443,6 +447,7 @@ export default function App() {
         onOpenDictionary={() => setIsDictionaryOpen(true)}
         onOpenWhisper={() => setIsWhisperOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
+        onLoadSampleData={session.loadSampleData}
         onClearAllData={handleClearAllData}
       />
 

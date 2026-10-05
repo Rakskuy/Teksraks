@@ -3,18 +3,20 @@
  * Header utama aplikasi Teksraks:
  * Desain modern, editorial, dan profesional (tanpa gradien AI artifisial).
  */
-import { HelpCircle, Moon, Sun, ShieldCheck } from 'lucide-react'
+import { HelpCircle, Moon, Sun, ShieldCheck, Settings } from 'lucide-react'
 
 interface HeaderProps {
   isDark: boolean
   onToggleDark: () => void
   onOpenGuide: () => void
+  onOpenSettings?: () => void
 }
 
 export default function Header({
   isDark,
   onToggleDark,
   onOpenGuide,
+  onOpenSettings,
 }: HeaderProps) {
   return (
     <header
@@ -31,12 +33,12 @@ export default function Header({
         Lompat ke konten utama
       </a>
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 sm:py-4">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5">
         <div className="flex items-center justify-between gap-4">
           {/* Sisi Kiri: Brand Teksraks & Keterangan */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Logo Mark Teksraks */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+            <div className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
               <img
                 src="/logo.png"
                 alt="Logo Teksraks"
@@ -61,7 +63,7 @@ export default function Header({
           </div>
 
           {/* Sisi Kanan: Badges + Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Status Keamanan Lokal */}
             <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60 text-[11px] font-medium">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -79,8 +81,25 @@ export default function Header({
                          transition-colors active:scale-95 shadow-2xs"
             >
               <HelpCircle className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-              <span>Cara Pakai</span>
+              <span className="hidden sm:inline">Cara Pakai</span>
             </button>
+
+            {/* Tombol Pengaturan & Preferensi */}
+            {onOpenSettings && (
+              <button
+                type="button"
+                id="btn-open-settings"
+                onClick={onOpenSettings}
+                aria-label="Buka menu pengaturan dan preferensi"
+                title="Pengaturan (Kamus Pribadi, Whisper, Mode Pengembang)"
+                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750
+                           border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold
+                           transition-colors active:scale-95 shadow-2xs"
+              >
+                <Settings className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <span className="hidden sm:inline">Pengaturan</span>
+              </button>
+            )}
 
             {/* Tombol Toggle Dark Mode */}
             <button
