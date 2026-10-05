@@ -33,6 +33,8 @@ import DialectSelector from './components/DialectSelector'
 import DialectPreviewPanel from './components/DialectPreviewPanel'
 import PersonalDictionaryModal from './components/PersonalDictionaryModal'
 import WhisperModal from './components/WhisperModal'
+import MobileBottomBar from './components/MobileBottomBar'
+import MobileSettingsSheet from './components/MobileSettingsSheet'
 import { applyBekasi, type DialectMode, type DialectIntensity } from './dialect'
 
 const PRIVACY_KEY = 'psikologi-stt-privacy-agreed'
@@ -45,6 +47,9 @@ export default function App() {
 
   // ── Modal Panduan Cara Pakai ─────────────────────────────
   const [isGuideOpen, setIsGuideOpen] = useState(false)
+
+  // ── Menu Pengaturan Sekunder Mobile (Bottom Sheet) ────────
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // ── Persetujuan Privasi ──────────────────────────────────
   const [privacyAgreed, setPrivacyAgreed] = useState<boolean>(() => {
@@ -272,7 +277,7 @@ export default function App() {
       {/* ── Konten Utama ── */}
       <main
         id="main-content"
-        className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-5"
+        className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-8 space-y-4 sm:space-y-5 pb-44 sm:pb-8 overflow-x-hidden"
       >
         {/* Banner Peringatan Browser */}
         {isBrowserWarning && <BrowserBanner />}
@@ -312,35 +317,39 @@ export default function App() {
         {/* 4. Tips Perekaman Audio Berkualitas di UI (Collapsible) */}
         <AudioTipsPanel />
 
-        {/* 5. Panel Kontrol Rekam (Mulai, Jeda, Lanjut, Berhenti, Bahasa, Visualizer, Mode Logat) */}
-        <ControlPanel
-          status={status}
-          isSupported={isSupported}
-          lang={lang}
-          audioLevel={audioLevel}
-          privacyAgreed={privacyAgreed}
-          dialectMode={dialectMode}
-          dialectIntensity={bekasiIntensity}
-          onStart={handleStartRecording}
-          onPause={handlePauseRecording}
-          onResume={handleResumeRecording}
-          onStop={stopRecording}
-          onLangChange={setLang}
-          onDialectModeChange={handleDialectModeChange}
-          onDialectIntensityChange={handleDialectIntensityChange}
-          onOpenDictionary={() => setIsDictionaryOpen(true)}
-          onOpenWhisper={() => setIsWhisperOpen(true)}
-        />
+        {/* 5. Panel Kontrol Rekam Desktop (Pada layar mobile, dikontrol via Bilah Bawah) */}
+        <div className="hidden sm:block">
+          <ControlPanel
+            status={status}
+            isSupported={isSupported}
+            lang={lang}
+            audioLevel={audioLevel}
+            privacyAgreed={privacyAgreed}
+            dialectMode={dialectMode}
+            dialectIntensity={bekasiIntensity}
+            onStart={handleStartRecording}
+            onPause={handlePauseRecording}
+            onResume={handleResumeRecording}
+            onStop={stopRecording}
+            onLangChange={setLang}
+            onDialectModeChange={handleDialectModeChange}
+            onDialectIntensityChange={handleDialectIntensityChange}
+            onOpenDictionary={() => setIsDictionaryOpen(true)}
+            onOpenWhisper={() => setIsWhisperOpen(true)}
+          />
+        </div>
 
-        {/* 6. Lapisan Pasca-Proses Dialek (Standar Baku vs Logat Bekasi) */}
-        <DialectSelector
-          mode={dialectMode}
-          intensity={bekasiIntensity}
-          onModeChange={handleDialectModeChange}
-          onIntensityChange={handleDialectIntensityChange}
-          onApplyToAllSegments={handleApplyDialectToAll}
-          segmentCount={session.segments.length}
-        />
+        {/* 6. Lapisan Pasca-Proses Dialek (Desktop) */}
+        <div className="hidden sm:block">
+          <DialectSelector
+            mode={dialectMode}
+            intensity={bekasiIntensity}
+            onModeChange={handleDialectModeChange}
+            onIntensityChange={handleDialectIntensityChange}
+            onApplyToAllSegments={handleApplyDialectToAll}
+            segmentCount={session.segments.length}
+          />
+        </div>
 
         {/* 7. Panel Pratinjau Logat (Komparasi Teks Asli vs Konversi Bekasi 2 Kolom) */}
         <DialectPreviewPanel
@@ -396,6 +405,46 @@ export default function App() {
           onExportSuccess={handleExportSuccess}
         />
       </main>
+
+      {/* ── Bilah Kontrol Bawah Mobile (Sticky Bottom Bar) ── */}
+      <MobileBottomBar
+        status={status}
+        isSupported={isSupported}
+        audioLevel={audioLevel}
+        durationFormatted={session.stats.durationFormatted}
+        speakers={session.speakers}
+        activeSpeakerId={session.activeSpeakerId}
+        onSelectSpeaker={session.setActiveSpeakerId}
+        onAddSpeaker={session.addSpeaker}
+        onStart={handleStartRecording}
+        onPause={handlePauseRecording}
+        onResume={handleResumeRecording}
+        onStop={stopRecording}
+        onOpenMenu={() => setIsMobileMenuOpen(true)}
+        onOpenWhisper={() => setIsWhisperOpen(true)}
+      />
+
+      {/* ── Bottom Sheet Pengaturan Sekunder Mobile ── */}
+      <MobileSettingsSheet
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        lang={lang}
+        onLangChange={setLang}
+        dialectMode={dialectMode}
+        dialectIntensity={bekasiIntensity}
+        onDialectModeChange={handleDialectModeChange}
+        onDialectIntensityChange={handleDialectIntensityChange}
+        showTimestamps={session.showTimestamps}
+        onToggleTimestamps={() =>
+          session.setShowTimestamps(prev => !prev)
+        }
+        isDark={isDark}
+        onToggleDark={toggleDarkMode}
+        onOpenDictionary={() => setIsDictionaryOpen(true)}
+        onOpenWhisper={() => setIsWhisperOpen(true)}
+        onOpenGuide={() => setIsGuideOpen(true)}
+        onClearAllData={handleClearAllData}
+      />
 
       {/* ── Footer ── */}
       <Footer />

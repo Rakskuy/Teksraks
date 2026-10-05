@@ -4,10 +4,11 @@
  * - Menampilkan daftar segmen per pembicara dengan warna masing-masing
  * - Preview live teks sementara (interim) dengan indikator aktif
  * - Toolbar: toggle timestamp, cari & ganti kata, hapus semua dengan konfirmasi
- * - Dukungan edit teks langsung, ubah pembicara, gabung segmen, dan hapus segmen
+ * - Auto-scroll halus ke teks terbaru saat proses rekaman berlangsung
+ * - Font minimum 16px pada input/edit untuk mencegah iOS auto-zoom
  * - Dukungan penuh Dark Mode dan aksesibilitas WCAG AA
  */
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import {
   Trash2,
   Clock,
@@ -76,6 +77,8 @@ export default function TranscriptArea({
   onClearReplaceCount,
 }: TranscriptAreaProps) {
   const [showConfirmClear, setShowConfirmClear] = useState(false)
+  const bottomAnchorRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   const activeSpeaker =
     speakers.find(s => s.id === activeSpeakerId) || speakers[0]
@@ -83,6 +86,13 @@ export default function TranscriptArea({
   const isRecording = status === 'recording'
   const isPaused = status === 'paused'
   const isEmpty = segments.length === 0 && !interimText.trim()
+
+  // Auto-scroll ke bagian bawah saat rekaman aktif dan ada teks baru
+  useEffect(() => {
+    if (isRecording && bottomAnchorRef.current) {
+      bottomAnchorRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [segments.length, interimText, isRecording])
 
   const handleConfirmClear = () => {
     onClearAll()
@@ -95,18 +105,18 @@ export default function TranscriptArea({
       aria-label="Area transkripsi diskusi"
     >
       {/* ── Toolbar Utama ── */}
-      <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 flex-wrap gap-2">
+      <div className="flex items-center justify-between px-3.5 sm:px-5 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 flex-wrap gap-2">
         {/* Judul & Status */}
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-slate-900 dark:bg-white flex-shrink-0" />
-            Transkripsi Dialog Diskusi
+            <span>Transkripsi Dialog</span>
           </h2>
 
           {isRecording && (
             <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-400 animate-pulse">
               <span className="w-1.5 h-1.5 rounded-full bg-red-600 inline-block" />
-              Merekam Live
+              Live
             </span>
           )}
 
@@ -121,7 +131,7 @@ export default function TranscriptArea({
           </span>
         </div>
 
-        {/* Toolbar Actions */}
+        {/* Toolbar Actions (Touch targets min 40-44px on mobile) */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Toggle Timestamp */}
           <button
@@ -129,7 +139,7 @@ export default function TranscriptArea({
             id="btn-toggle-timestamps"
             onClick={onToggleTimestamps}
             title={showTimestamps ? 'Sembunyikan Waktu [mm:ss]' : 'Tampilkan Waktu [mm:ss]'}
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+            className={`min-h-[40px] inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
               showTimestamps
                 ? 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border-primary-200 dark:border-primary-800'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -145,7 +155,7 @@ export default function TranscriptArea({
             id="btn-toggle-find-replace"
             onClick={() => setFindReplaceOpen(!findReplaceOpen)}
             title="Cari dan Ganti Istilah Psikologi"
-            className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
+            className={`min-h-[40px] inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
               findReplaceOpen
                 ? 'bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300 border-primary-200 dark:border-primary-800'
                 : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700'
@@ -163,7 +173,7 @@ export default function TranscriptArea({
               onClick={onRevertAllSegmentsToRaw}
               title="Kembalikan seluruh segmen ke teks asli rekaman mesin"
               aria-label="Kembalikan semua segmen ke teks asli"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold
+              className="min-h-[40px] inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold
                          bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700
                          hover:bg-amber-50 dark:hover:bg-amber-950/40 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
             >
@@ -180,9 +190,9 @@ export default function TranscriptArea({
             disabled={segments.length === 0}
             title="Bersihkan seluruh segmen transkrip"
             aria-label="Bersihkan semua segmen"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300
+            className="min-h-[40px] inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300
                        hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 border border-slate-200 dark:border-slate-700
-                       hover:border-red-200 dark:hover:border-red-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                       hover:border-red-200 dark:border-red-800 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Bersihkan</span>
@@ -199,8 +209,7 @@ export default function TranscriptArea({
           <div className="flex items-center gap-2 text-xs text-red-700 dark:text-red-300">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>
-              <strong>Hapus semua {segments.length} segmen transkrip?</strong> Tindakan ini
-              tidak dapat dibatalkan.
+              <strong>Hapus semua {segments.length} segmen transkrip?</strong> Tindakan ini tidak dapat dibatalkan.
             </span>
           </div>
           <div className="flex gap-2 flex-shrink-0">
@@ -208,7 +217,7 @@ export default function TranscriptArea({
               id="btn-confirm-clear"
               type="button"
               onClick={handleConfirmClear}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-600 text-white hover:bg-red-700 transition"
+              className="min-h-[44px] px-3.5 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition"
             >
               Ya, Hapus
             </button>
@@ -216,7 +225,7 @@ export default function TranscriptArea({
               id="btn-cancel-clear"
               type="button"
               onClick={() => setShowConfirmClear(false)}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition"
+              className="min-h-[44px] px-3.5 rounded-xl text-xs font-semibold bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 transition"
             >
               Batal
             </button>
@@ -239,24 +248,26 @@ export default function TranscriptArea({
       )}
 
       {/* ── Konten Segmen & Interim ── */}
-      <div className="min-h-[260px] max-h-[580px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900/90">
+      <div
+        ref={scrollContainerRef}
+        className="min-h-[240px] max-h-[60vh] sm:max-h-[580px] overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-slate-900/90"
+      >
         {/* Empty State */}
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center text-slate-400 dark:text-slate-500 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
-              <Radio className="w-7 h-7 opacity-80" />
+          <div className="flex flex-col items-center justify-center p-6 sm:p-12 text-center text-slate-400 dark:text-slate-500 space-y-3">
+            <div className="w-12 sm:w-14 h-12 sm:h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <Radio className="w-6 sm:w-7 h-6 sm:h-7 opacity-80" />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
                 Belum ada rekaman transkripsi diskusi
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto leading-relaxed">
-                Pilih pembicara aktif di atas (atau tekan angka 1-9 pada keyboard),
-                lalu klik <strong>Mulai Rekam</strong> untuk merekam suara secara real-time.
+                Pilih pembicara aktif di bilah bawah atau atas, lalu ketuk tombol merah <strong>Rekam</strong> untuk mulai.
               </p>
             </div>
             <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5">
-              <span>💡 Anda dapat mengklik teks segmen mana pun nanti untuk mengeditnya secara inline.</span>
+              <span>💡 Ketuk teks segmen mana saja nanti untuk mengedit secara inline.</span>
             </div>
           </div>
         )}
@@ -285,12 +296,12 @@ export default function TranscriptArea({
         {/* ── Preview Teks Sementara (Interim) yang Sedang Didengarkan ── */}
         {interimText && (
           <div
-            className="flex gap-3 px-4 sm:px-5 py-3.5 bg-primary-50/40 dark:bg-primary-950/20 border-t border-dashed border-primary-200 dark:border-primary-800 animate-fade-in"
+            className="flex gap-2.5 sm:gap-3 px-3 sm:px-5 py-3 bg-primary-50/40 dark:bg-primary-950/20 border-t border-dashed border-primary-200 dark:border-primary-800 animate-fade-in"
             aria-live="polite"
           >
             {/* Color bar pembicara aktif */}
             <div
-              className="flex-shrink-0 w-1 rounded-full self-stretch animate-pulse"
+              className="flex-shrink-0 w-1.5 sm:w-1 rounded-full self-stretch animate-pulse"
               style={{ backgroundColor: activeSpeaker.color }}
             />
 
@@ -313,13 +324,16 @@ export default function TranscriptArea({
                 </span>
               </div>
 
-              {/* Interim Text (abu-abu, miring) */}
-              <p className="text-sm text-slate-600 dark:text-slate-300 italic leading-relaxed">
+              {/* Interim Text */}
+              <p className="text-base sm:text-sm text-slate-600 dark:text-slate-300 italic leading-[1.6]">
                 {interimText}
               </p>
             </div>
           </div>
         )}
+
+        {/* Anchor untuk auto-scroll ke bawah */}
+        <div ref={bottomAnchorRef} className="h-2" />
       </div>
     </section>
   )

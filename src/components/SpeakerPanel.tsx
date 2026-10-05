@@ -157,13 +157,13 @@ export default function SpeakerPanel({
                       {sp.name}
                     </span>
                     {shortcut && (
-                      <span className="text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 py-0.2 rounded">
+                      <span className="hidden sm:inline text-[10px] font-mono font-semibold text-slate-400 dark:text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 py-0.2 rounded">
                         {shortcut}
                       </span>
                     )}
                     {isActive && (
                       <Check
-                        className="w-3 h-3 flex-shrink-0"
+                        className="w-3.5 h-3.5 flex-shrink-0"
                         style={{ color: sp.color }}
                         strokeWidth={3}
                       />
@@ -176,18 +176,18 @@ export default function SpeakerPanel({
                       type="button"
                       onClick={() => startEdit(sp)}
                       aria-label={`Ganti nama ${sp.name}`}
-                      className="p-1 rounded text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40 transition-colors"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/40 transition-colors"
                     >
-                      <Pencil className="w-3 h-3" />
+                      <Pencil className="w-3.5 h-3.5" />
                     </button>
                     {speakers.length > 1 && (
                       <button
                         type="button"
                         onClick={() => onDelete(sp.id)}
                         aria-label={`Hapus ${sp.name}`}
-                        className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
+                        className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>

@@ -1,16 +1,18 @@
 /**
  * SegmentItem.tsx
  * Satu segmen transkripsi dialog:
- * - Inline click-to-edit dengan auto-resize textarea
+ * - Inline click-to-edit dengan auto-resize textarea (font min 16px di mobile agar tidak auto-zoom)
  * - Dropdown ganti pembicara dengan label warna
  * - Gabung dengan segmen sebelumnya & hapus segmen
+ * - Mobile bottom sheet aksi via tombol sentuh 44x44px (bebas dari trigger scroll tak sengaja)
  * - Dukungan penuh Dark Mode dan kontras WCAG AA
  */
 import { useState, useRef, useEffect } from 'react'
-import { Trash2, Merge, ChevronDown, RotateCcw, Sparkles } from 'lucide-react'
+import { Trash2, Merge, ChevronDown, RotateCcw, Sparkles, MoreVertical } from 'lucide-react'
 import type { Segment, Speaker } from '../types/session'
 import type { DialectChange } from '../dialect'
 import WordDialectPopover from './WordDialectPopover'
+import SegmentActionSheet from './SegmentActionSheet'
 
 interface SegmentItemProps {
   segment: Segment
@@ -39,15 +41,16 @@ export default function SegmentItem({
   onRevertWord,
   onRevertToRaw,
 }: SegmentItemProps) {
-  const [isEditing, setIsEditing]       = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const currentDisplayText = segment.displayText || segment.text || ''
-  const [editText, setEditText]         = useState(currentDisplayText)
+  const [editText, setEditText] = useState(currentDisplayText)
   const [showSpeakerMenu, setShowSpeakerMenu] = useState(false)
+  const [showActionSheet, setShowActionSheet] = useState(false)
   const [activeChange, setActiveChange] = useState<DialectChange | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const menuRef     = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  // Sync editText saat segment.displayText berubah dari luar (mis. find-replace atau dialek)
+  // Sync editText saat segment.displayText berubah dari luar
   useEffect(() => {
     if (!isEditing) setEditText(segment.displayText || segment.text || '')
   }, [segment.displayText, segment.text, isEditing])
@@ -92,13 +95,13 @@ export default function SegmentItem({
 
   return (
     <div
-      className="group relative flex gap-3 px-4 sm:px-5 py-3.5
+      className="group relative flex gap-2.5 sm:gap-3 px-3 sm:px-5 py-3.5
                  border-b border-slate-100 dark:border-slate-800 last:border-b-0
                  hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors duration-150"
     >
       {/* ── Left: speaker color bar ── */}
       <div
-        className="flex-shrink-0 w-1 rounded-full self-stretch opacity-80"
+        className="flex-shrink-0 w-1.5 sm:w-1 rounded-full self-stretch opacity-85"
         style={{ backgroundColor: speakerColor }}
       />
 
@@ -113,18 +116,18 @@ export default function SegmentItem({
               type="button"
               onClick={() => setShowSpeakerMenu(v => !v)}
               aria-label={`Ganti pembicara segmen ini (saat ini ${speaker?.name ?? 'Tidak Diketahui'})`}
-              className="flex items-center gap-1 text-xs font-bold rounded-md px-1.5 py-0.5
-                         hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              className="min-h-[36px] sm:min-h-0 flex items-center gap-1 text-xs font-bold rounded-lg px-2 sm:px-1.5 py-1 sm:py-0.5
+                         hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all"
               style={{ color: speakerColor }}
             >
               <span>{speaker?.name ?? 'Tidak Diketahui'}</span>
-              <ChevronDown className="w-2.5 h-2.5 opacity-70" />
+              <ChevronDown className="w-3 h-3 sm:w-2.5 sm:h-2.5 opacity-70" />
             </button>
 
-            {/* Dropdown speaker picker */}
+            {/* Dropdown speaker picker (Desktop) */}
             {showSpeakerMenu && (
               <div
-                className="absolute z-20 top-full left-0 mt-1 min-w-[150px] bg-white dark:bg-slate-800
+                className="absolute z-20 top-full left-0 mt-1 min-w-[170px] bg-white dark:bg-slate-800
                            border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg py-1 animate-fade-in"
               >
                 {speakers.map((sp, i) => (
@@ -132,16 +135,16 @@ export default function SegmentItem({
                     key={sp.id}
                     type="button"
                     onClick={() => { onChangeSpeaker(segment.id, sp.id); setShowSpeakerMenu(false) }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs hover:bg-slate-50
+                    className="w-full min-h-[44px] sm:min-h-0 flex items-center gap-2.5 px-3 py-2 sm:py-1.5 text-xs hover:bg-slate-50
                                dark:hover:bg-slate-700/60 text-left transition-colors"
                   >
                     <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                       style={{ backgroundColor: sp.color }}
                     />
-                    <span className="font-medium text-slate-700 dark:text-slate-200">{sp.name}</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200">{sp.name}</span>
                     {i < 9 && (
-                      <span className="ml-auto text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 rounded">
+                      <span className="hidden sm:inline ml-auto text-[10px] font-mono text-slate-400 bg-slate-100 dark:bg-slate-700 px-1 rounded">
                         {i + 1}
                       </span>
                     )}
@@ -154,7 +157,7 @@ export default function SegmentItem({
           {/* Timestamp & Status Badges */}
           <div className="flex items-center gap-1.5 flex-wrap">
             {showTimestamp && (
-              <span className="text-[10px] font-mono font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
+              <span className="text-[10px] sm:text-[11px] font-mono font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/60 dark:border-slate-700/60">
                 {segment.startTime || segment.timestamp}
               </span>
             )}
@@ -184,7 +187,7 @@ export default function SegmentItem({
               if (e.key === 'Escape') { setEditText(segment.displayText || segment.text); setIsEditing(false) }
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) commitEdit()
             }}
-            className="w-full text-sm text-slate-800 dark:text-slate-100 leading-relaxed bg-primary-50/70
+            className="w-full text-base sm:text-sm text-slate-800 dark:text-slate-100 leading-[1.6] bg-primary-50/70
                        dark:bg-slate-800 border border-primary-300 dark:border-primary-600 rounded-lg px-3 py-2
                        focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none overflow-hidden"
             rows={1}
@@ -192,9 +195,9 @@ export default function SegmentItem({
           />
         ) : (
           <div
-            className="text-sm text-slate-800 dark:text-slate-200 leading-relaxed cursor-text break-words select-text"
+            className="text-base sm:text-sm text-slate-800 dark:text-slate-200 leading-[1.6] cursor-text break-words select-text"
             onClick={() => setIsEditing(true)}
-            title="Klik area teks untuk mengedit langsung"
+            title="Klik atau ketuk area teks untuk mengedit langsung"
             role="button"
             tabIndex={0}
             onKeyDown={e => {
@@ -228,15 +231,15 @@ export default function SegmentItem({
                             e.stopPropagation()
                             setActiveChange(isPopoverOpen ? null : matchedChange)
                           }}
-                          aria-label={`Kata logat "${matchedChange.replacement}", bentuk baku: "${matchedChange.original}". Klik untuk opsi pemulihan atau kamus pribadi.`}
+                          aria-label={`Kata logat "${matchedChange.replacement}", bentuk baku: "${matchedChange.original}". Ketuk untuk opsi pemulihan atau kamus pribadi.`}
                           aria-haspopup="dialog"
                           aria-expanded={isPopoverOpen}
                           className="bg-amber-100/90 hover:bg-amber-200/90 dark:bg-amber-900/50 dark:hover:bg-amber-900/80
                                      text-amber-950 dark:text-amber-100 font-semibold
                                      underline underline-offset-4 decoration-dashed decoration-amber-600 dark:decoration-amber-400 decoration-2
                                      border-b-2 border-dashed border-amber-500/70 dark:border-amber-400/80
-                                     rounded-sm px-1 py-0.5 transition-all cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
-                          title={`Kata logat: "${matchedChange.replacement}" (Baku: "${matchedChange.original}") — Klik untuk opsi`}
+                                     rounded px-1.5 py-0.5 transition-all cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          title={`Kata logat: "${matchedChange.replacement}" (Baku: "${matchedChange.original}") — Ketuk untuk opsi`}
                         >
                           {token}
                         </button>
@@ -263,9 +266,22 @@ export default function SegmentItem({
         )}
       </div>
 
-      {/* ── Action buttons (muncul saat hover / fokus) ── */}
+      {/* ── Mobile Action Trigger Button (min 44x44px, selalu tampak di HP) ── */}
+      <div className="sm:hidden flex-shrink-0 flex items-start pt-0.5">
+        <button
+          type="button"
+          id={`btn-mobile-segment-actions-${segment.id}`}
+          onClick={() => setShowActionSheet(true)}
+          aria-label={`Buka menu aksi untuk segmen dari ${speaker?.name ?? 'pembicara'}`}
+          className="min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 active:bg-slate-100 dark:active:bg-slate-800 transition-colors"
+        >
+          <MoreVertical className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* ── Desktop Action Buttons (Hover/Focus di layar >= 640px) ── */}
       <div
-        className="flex-shrink-0 flex items-start gap-1 opacity-0 group-hover:opacity-100
+        className="hidden sm:flex flex-shrink-0 items-start gap-1 opacity-0 group-hover:opacity-100
                    group-focus-within:opacity-100 transition-opacity duration-150 pt-0.5"
       >
         {/* Tombol kembalikan ke teks asli mesin */}
@@ -311,6 +327,21 @@ export default function SegmentItem({
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
+
+      {/* ── Mobile Action Sheet Modal ── */}
+      <SegmentActionSheet
+        isOpen={showActionSheet}
+        onClose={() => setShowActionSheet(false)}
+        segment={segment}
+        speaker={speaker}
+        speakers={speakers}
+        isFirst={isFirst}
+        onStartEdit={() => setIsEditing(true)}
+        onChangeSpeaker={onChangeSpeaker}
+        onMerge={onMerge}
+        onRevertToRaw={onRevertToRaw}
+        onDelete={onDelete}
+      />
     </div>
   )
 }
