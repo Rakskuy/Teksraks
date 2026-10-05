@@ -17,7 +17,6 @@ import {
   Key,
   Settings,
   ShieldAlert,
-  Sparkles,
   Play,
   Pause,
   RotateCcw,
@@ -237,20 +236,20 @@ export default function WhisperModal({
     >
       <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
         {/* ── Modal Header ── */}
-        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-violet-600/10 via-primary-500/10 to-transparent">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-violet-600 text-white shadow-xs">
-              <Sparkles className="w-5 h-5" />
+            <div className="p-2 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs">
+              <FileAudio className="w-5 h-5" />
             </div>
             <div>
-              <h2 id="whisper-modal-title" className="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <h2 id="whisper-modal-title" className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <span>Transkripsi Whisper</span>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-violet-100 dark:bg-violet-950/60 text-violet-800 dark:text-violet-300 border border-violet-200 dark:border-violet-800">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300/80 dark:border-slate-600 font-mono">
                   Mesin Ke-2 (Groq / OpenAI)
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Unggah berkas rekaman atau rekam langsung dengan model Whisper AI
+                Unggah berkas rekaman audio atau rekam suara langsung
               </p>
             </div>
           </div>
@@ -272,7 +271,7 @@ export default function WhisperModal({
             onClick={() => setTab('upload')}
             className={`flex items-center gap-2 py-3 px-3 border-b-2 transition-all ${
               tab === 'upload'
-                ? 'border-violet-600 text-violet-600 dark:text-violet-400'
+                ? 'border-slate-900 text-slate-900 dark:border-white dark:text-white font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
@@ -285,7 +284,7 @@ export default function WhisperModal({
             onClick={() => setTab('record')}
             className={`flex items-center gap-2 py-3 px-3 border-b-2 transition-all ${
               tab === 'record'
-                ? 'border-violet-600 text-violet-600 dark:text-violet-400'
+                ? 'border-slate-900 text-slate-900 dark:border-white dark:text-white font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
@@ -298,7 +297,7 @@ export default function WhisperModal({
             onClick={() => setTab('settings')}
             className={`flex items-center gap-2 py-3 px-3 border-b-2 transition-all ml-auto ${
               tab === 'settings'
-                ? 'border-violet-600 text-violet-600 dark:text-violet-400'
+                ? 'border-slate-900 text-slate-900 dark:border-white dark:text-white font-bold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
@@ -676,7 +675,7 @@ export default function WhisperModal({
               id="btn-execute-whisper"
               onClick={handleProcessAudio}
               disabled={!isReadyToProcess}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-violet-600 to-primary-600 hover:from-violet-700 hover:to-primary-700 shadow-md active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 shadow-sm active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
             >
               {isProcessing ? (
                 <>
@@ -685,7 +684,7 @@ export default function WhisperModal({
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-4 h-4" />
+                  <FileAudio className="w-4 h-4" />
                   <span>Mulai Transkripsi ({settings.provider.toUpperCase()})</span>
                 </>
               )}

@@ -187,9 +187,9 @@ export default function ControlPanel({
                   disabled={isRecording}
                   aria-label="Buka dialog transkripsi Whisper (Unggah berkas / rekam)"
                   title="Mesin ke-2: Unggah audio / rekam via Whisper AI (OpenAI / Groq)"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/50 hover:bg-violet-100 dark:hover:bg-violet-900/60 border border-violet-200 dark:border-violet-800 rounded-lg shadow-2xs transition-colors disabled:opacity-40"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 rounded-lg shadow-2xs transition-colors disabled:opacity-40"
                 >
-                  <FileAudio className="w-3.5 h-3.5 text-violet-600 dark:text-violet-400" />
+                  <FileAudio className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
                   <span>Mesin Whisper</span>
                 </button>
               )}
@@ -235,14 +235,14 @@ export default function ControlPanel({
                   onClick={onStart}
                   disabled={!isSupported || isStopping}
                   aria-label="Mulai merekam suara"
-                  className="relative flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-sm text-white
-                             bg-gradient-to-r from-primary-600 to-violet-600 hover:from-primary-700 hover:to-violet-700
-                             focus:outline-none focus:ring-4 focus:ring-primary-300 dark:focus:ring-primary-900
-                             shadow-md hover:shadow-lg active:scale-95 transition-all duration-200
+                  className="relative flex items-center gap-2.5 px-6 py-3.5 rounded-2xl font-bold text-sm
+                             bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white
+                             focus:outline-none focus:ring-4 focus:ring-slate-300 dark:focus:ring-slate-700
+                             shadow-sm hover:shadow active:scale-95 transition-all duration-200
                              disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
                 >
                   <span className="relative flex items-center justify-center w-5 h-5">
-                    <Mic className="w-5 h-5 relative z-10" strokeWidth={2} />
+                    <Mic className="w-5 h-5 relative z-10" strokeWidth={2.2} />
                   </span>
                   <span>Mulai Rekam</span>
                 </button>
@@ -255,10 +255,10 @@ export default function ControlPanel({
                     disabled={isStopping}
                     aria-label="Buka transkripsi Whisper (Unggah Audio atau Rekam)"
                     title="Mesin Kedua: Whisper AI (OpenAI / Groq) dengan retensi kosakata Bekasi"
-                    className="flex items-center gap-2 px-4 py-3.5 rounded-2xl font-bold text-sm text-violet-700 dark:text-violet-300 bg-white dark:bg-slate-800 hover:bg-violet-50 dark:hover:bg-violet-950/40 border border-violet-200 dark:border-violet-800/80 shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200"
+                    className="flex items-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 shadow-2xs hover:shadow-xs active:scale-95 transition-all duration-200"
                   >
-                    <FileAudio className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                    <span>Unggah / Whisper AI</span>
+                    <FileAudio className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <span>Unggah / Whisper</span>
                   </button>
                 )}
               </>
@@ -290,9 +290,9 @@ export default function ControlPanel({
                 onClick={onResume}
                 aria-label="Lanjutkan rekaman suara"
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white
-                           bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600
+                           bg-emerald-600 hover:bg-emerald-700
                            focus:outline-none focus:ring-4 focus:ring-emerald-300 dark:focus:ring-emerald-900
-                           shadow-md hover:shadow-lg active:scale-95 transition-all duration-200"
+                           shadow-sm hover:shadow active:scale-95 transition-all duration-200"
               >
                 <Play className="w-4 h-4" strokeWidth={2.5} fill="currentColor" />
                 <span>Lanjutkan</span>
@@ -308,9 +308,9 @@ export default function ControlPanel({
                 disabled={isStopping}
                 aria-label="Berhenti merekam dan simpan hasil"
                 className="flex items-center gap-2 px-5 py-3 rounded-2xl font-bold text-sm text-white
-                           bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700
-                           focus:outline-none focus:ring-4 focus:ring-red-300 dark:focus:ring-red-900
-                           shadow-md hover:shadow-lg active:scale-95 transition-all duration-200
+                           bg-rose-600 hover:bg-rose-700
+                           focus:outline-none focus:ring-4 focus:ring-rose-300 dark:focus:ring-rose-900
+                           shadow-sm hover:shadow active:scale-95 transition-all duration-200
                            disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none"
               >
                 <Square className="w-4 h-4" strokeWidth={0} fill="currentColor" />

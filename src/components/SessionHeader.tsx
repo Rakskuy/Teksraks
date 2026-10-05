@@ -55,9 +55,8 @@ export default function SessionHeader({
         aria-label="Tampilkan atau sembunyikan formulir detail sesi"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-100 to-violet-100
-                          dark:from-primary-950 dark:to-violet-950 flex items-center justify-center flex-shrink-0">
-            <FileText className="w-4 h-4 text-primary-600 dark:text-primary-400" />
+          <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center flex-shrink-0">
+            <FileText className="w-4 h-4" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{title}</p>

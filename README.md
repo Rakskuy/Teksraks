@@ -1,6 +1,6 @@
-# 🎙️ Transkripsi Diskusi Mahasiswa Psikologi (Speech to Text)
+# 🎙️ Teksraks — Studio Transkripsi Diskusi Psikologi
 
-Aplikasi web berbasis browser (*client-side*) yang dirancang khusus untuk memfasilitasi mahasiswa, dosen, dan peneliti psikologi dalam mentranskripsikan diskusi kelompok terfokus (*Focus Group Discussion* / FGD), wawancara kualitatif, serta seminar akademik secara real-time ke dalam teks Bahasa Indonesia.
+**Teksraks** adalah aplikasi web berbasis browser (*client-side*) yang dirancang khusus untuk memfasilitasi mahasiswa, dosen, dan peneliti psikologi dalam mentranskripsikan diskusi kelompok terfokus (*Focus Group Discussion* / FGD), wawancara kualitatif, serta seminar akademik secara real-time ke dalam teks Bahasa Indonesia.
 
 Seluruh data transkripsi diproses dan disimpan secara lokal di browser Anda tanpa perantara server backend, menjamin kerahasiaan dan privasi subjek penelitian.
 

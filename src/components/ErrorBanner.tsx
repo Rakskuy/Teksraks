@@ -16,8 +16,8 @@ export default function ErrorBanner({ error, onDismiss }: ErrorBannerProps) {
     <div
       role="alert"
       aria-live="assertive"
-      className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-gradient-to-r from-red-50 to-rose-50
-                 dark:from-red-950/40 dark:to-rose-950/30 p-4 sm:p-5 animate-fade-in shadow-xs"
+      className="rounded-2xl border border-red-200 dark:border-red-900/60 bg-red-50/90
+                 dark:bg-red-950/30 p-4 sm:p-5 animate-fade-in shadow-xs"
     >
       <div className="flex items-start gap-3">
         {/* Icon */}

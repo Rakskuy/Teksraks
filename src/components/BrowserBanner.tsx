@@ -8,8 +8,8 @@ export default function BrowserBanner() {
   return (
     <div
       role="alert"
-      className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-gradient-to-r from-amber-50 to-orange-50
-                 dark:from-amber-950/40 dark:to-orange-950/30 p-4 sm:p-5 animate-fade-in shadow-xs"
+      className="rounded-2xl border border-amber-300 dark:border-amber-800 bg-amber-50/90
+                 dark:bg-amber-950/30 p-4 sm:p-5 animate-fade-in shadow-xs"
     >
       <div className="flex items-start gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/60 flex items-center justify-center">

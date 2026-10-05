@@ -133,7 +133,7 @@ export default function GuideModal({ isOpen, onClose }: GuideModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="w-full sm:w-auto px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white font-semibold rounded-xl text-xs shadow-xs transition active:scale-95"
+            className="w-full sm:w-auto px-4 py-2 bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-semibold rounded-xl text-xs shadow-xs transition active:scale-95"
           >
             Mengerti & Mulai
           </button>

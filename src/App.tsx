@@ -223,7 +223,7 @@ export default function App() {
   }, [])
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-slate-50 via-slate-100/70 to-slate-200/50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-200">
       {/* ── Dialog Pemulihan Sesi (Autosave Restore) ── */}
       {session.showRestoreDialog && (
         <RestoreDialog

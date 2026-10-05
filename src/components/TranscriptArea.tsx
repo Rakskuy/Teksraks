@@ -14,7 +14,6 @@ import {
   Search,
   AlertTriangle,
   Radio,
-  Sparkles,
   RotateCcw,
 } from 'lucide-react'
 import type { Segment, Speaker } from '../types/session'
@@ -100,7 +99,7 @@ export default function TranscriptArea({
         {/* Judul & Status */}
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-primary-500 to-violet-500 flex-shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-slate-900 dark:bg-white flex-shrink-0" />
             Transkripsi Dialog Diskusi
           </h2>
 
@@ -244,8 +243,8 @@ export default function TranscriptArea({
         {/* Empty State */}
         {isEmpty && (
           <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center text-slate-400 dark:text-slate-500 space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-50 to-violet-100 dark:from-primary-950 dark:to-violet-950 flex items-center justify-center text-primary-500 dark:text-primary-400 shadow-inner">
-              <Radio className="w-8 h-8 opacity-75" />
+            <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400">
+              <Radio className="w-7 h-7 opacity-80" />
             </div>
             <div>
               <p className="text-sm font-bold text-slate-700 dark:text-slate-200">
@@ -256,9 +255,8 @@ export default function TranscriptArea({
                 lalu klik <strong>Mulai Rekam</strong> untuk merekam suara secara real-time.
               </p>
             </div>
-            <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-100 dark:border-slate-700 inline-flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-primary-500" />
-              Tip: Anda dapat langsung mengklik teks segmen mana pun nanti untuk mengeditnya.
+            <div className="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 inline-flex items-center gap-1.5">
+              <span>💡 Anda dapat mengklik teks segmen mana pun nanti untuk mengeditnya secara inline.</span>
             </div>
           </div>
         )}
