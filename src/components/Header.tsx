@@ -3,7 +3,7 @@
  * Header utama aplikasi Teksraks:
  * Desain modern, editorial, dan profesional (tanpa gradien AI artifisial).
  */
-import { AudioWaveform, HelpCircle, Moon, Sun, ShieldCheck } from 'lucide-react'
+import { HelpCircle, Moon, Sun, ShieldCheck } from 'lucide-react'
 
 interface HeaderProps {
   isDark: boolean
@@ -36,8 +36,12 @@ export default function Header({
           {/* Sisi Kiri: Brand Teksraks & Keterangan */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Logo Mark Teksraks */}
-            <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 flex items-center justify-center shadow-xs">
-              <AudioWaveform className="w-5 h-5" strokeWidth={2.2} />
+            <div className="flex-shrink-0 w-10 h-10 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-xs bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="Logo Teksraks"
+                className="w-full h-full object-cover"
+              />
             </div>
 
             {/* Nama & Deskripsi */}
