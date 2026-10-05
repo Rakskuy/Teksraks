@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================
+   Global Base Styles
+   ========================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  @apply bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 antialiased transition-colors duration-200;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* =========================================
+   Custom Scrollbar
+   ========================================= */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 dark:bg-slate-900 rounded-full;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 dark:bg-slate-700 rounded-full;
+  transition: background 0.2s;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-400 dark:bg-slate-600;
+}
+
+/* =========================================
+   Custom Component Styles
+   ========================================= */
+@layer components {
+  /* Glass Card */
+  .glass-card {
+    @apply bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm
+           border border-slate-200/70 dark:border-slate-800/80
+           shadow-sm transition-colors duration-200;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-600 to-violet-600
+           dark:from-primary-400 dark:to-violet-400
+           bg-clip-text text-transparent;
+  }
+
+  /* Mic pulse ring */
+  .mic-ring {
+    @apply absolute inset-0 rounded-full border-2 border-red-400 opacity-75;
+    animation: micPulse 1.5s ease-out infinite;
+  }
+
+  /* Transcript fade-in line */
+  .transcript-line-enter {
+    animation: fadeIn 0.35s ease-out;
+  }
+
+  /* Button base */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 font-semibold rounded-xl
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+           focus:ring-primary-500 dark:focus:ring-offset-slate-900
+           disabled:opacity-40 disabled:cursor-not-allowed disabled:pointer-events-none
+           active:scale-95;
+  }
+
+  .btn-primary {
+    @apply btn bg-gradient-to-r from-primary-600 to-violet-600 text-white
+           hover:from-primary-700 hover:to-violet-700 focus:ring-primary-500
+           shadow-sm hover:shadow;
+  }
+
+  .btn-danger {
+    @apply btn bg-gradient-to-r from-red-500 to-rose-600 text-white
+           hover:from-red-600 hover:to-rose-700 focus:ring-red-400
+           shadow-sm hover:shadow;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-slate-700 dark:text-slate-300
+           hover:bg-slate-100 dark:hover:bg-slate-800
+           focus:ring-slate-400 border border-slate-200 dark:border-slate-700;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .btn-md {
+    @apply px-4 py-2 text-xs sm:text-sm;
+  }
+
+  .btn-lg {
+    @apply px-6 py-3 text-sm sm:text-base;
+  }
+
+  /* Export button variants */
+  .btn-export-txt {
+    @apply btn bg-slate-700 dark:bg-slate-800 text-white hover:bg-slate-800 dark:hover:bg-slate-700
+           border border-slate-600 dark:border-slate-700 shadow-sm;
+  }
+
+  .btn-export-docx {
+    @apply btn bg-blue-600 hover:bg-blue-700 text-white
+           border border-blue-500 shadow-sm;
+  }
+
+  .btn-export-pdf {
+    @apply btn bg-rose-600 hover:bg-rose-700 text-white
+           border border-rose-500 shadow-sm;
+  }
+}
+
+@layer utilities {
+  .shadow-xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  }
+  .shadow-2xs {
+    box-shadow: 0 1px 1px 0 rgba(0, 0, 0, 0.03);
+  }
+}
+
+/* =========================================
+   Keyframe Animations
+   ========================================= */
+@keyframes micPulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes waveBar {
+  0%, 100% { height: 8px; }
+  50% { height: 24px; }
+}
+
+/* Wave Animation (used in StatusBadge) */
+.wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  @apply bg-red-500;
+  animation: waveBar 0.8s ease-in-out infinite;
+}
+.wave-bar:nth-child(2) { animation-delay: 0.1s; }
+.wave-bar:nth-child(3) { animation-delay: 0.2s; }
+.wave-bar:nth-child(4) { animation-delay: 0.3s; }
+.wave-bar:nth-child(5) { animation-delay: 0.4s; }
